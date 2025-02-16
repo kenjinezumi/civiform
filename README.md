@@ -1,46 +1,89 @@
-# Getting Started with Create React App
+# CiviForm
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+CiviForm is a **web-based form builder** and data collection tool inspired by solutions like **Kobo Toolbox**. It allows you to **create**, **deploy**, and **manage** forms with conditional logic, multiple question types, and a user-friendly interface.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Table of Contents
 
-### `npm start`
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [System Requirements](#system-requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Running the Frontend](#running-the-frontend)
+  - [Running the Backend](#running-the-backend)
+  - [Default Admin Credentials](#default-admin-credentials)
+- [How to Create a New Form](#how-to-create-a-new-form)
+- [Customization](#customization)
+- [Future Enhancements](#future-enhancements)
+- [License](#license)
+- [Contact](#contact)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+---
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Features
 
-### `npm test`
+1. **Form Builder**  
+   - Multiple question types (text, number, date, time, email, phone, rating, file upload, etc.).
+   - Conditional skip logic to show/hide questions based on previous answers.
+   - Required fields, placeholders, help text, and choice-based questions.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. **User-Friendly UI**  
+   - Modern React + MUI design.
+   - Responsive layout for mobile and desktop.
+   - Intuitive “accordion” UI for advanced settings.
 
-### `npm run build`
+3. **Public & Admin Views**  
+   - Public links to fill out forms.
+   - Admin dashboard for creating/editing forms, managing responses, etc.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+4. **Authentication & Authorization**  
+   - Basic login (JWT mock or custom logic).
+   - Protected admin routes (only logged-in users can edit forms).
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+5. **Data Persistence**  
+   - FastAPI backend with a recommended PostgreSQL database (or any SQL DB).
+   - Docker-friendly setup for production deployments.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+6. **Modular Architecture**  
+   - Controller-Service-Repository pattern for both frontend and backend.
+   - Easily extendable for advanced workflows, custom validations, or integrable with external systems.
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Tech Stack
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+**Frontend**  
+- [React](https://reactjs.org/)  
+- [TypeScript](https://www.typescriptlang.org/)  
+- [Material UI (MUI)](https://mui.com/)  
+- [React Router](https://reactrouter.com/)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+**Backend**  
+- [FastAPI (Python)](https://fastapi.tiangolo.com/)  
+- [SQLAlchemy](https://www.sqlalchemy.org/) for ORM  
+- [Poetry](https://python-poetry.org/) for dependency management  
+- [JWT Authentication](https://jwt.io/) or session-based auth
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+**Database**  
+- [PostgreSQL](https://www.postgresql.org/) recommended  
+- Any SQL-compatible DB can be integrated
 
-## Learn More
+**Deployment**  
+- [Docker](https://www.docker.com/) containers  
+- [Docker Compose](https://docs.docker.com/compose/) for multi-container setups
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
+
+## System Requirements
+
+- **Node.js** (v14+ recommended)  
+- **npm** or **yarn**  
+- **Python 3.10+**  
+- **Poetry**  
+- (Optional) **Docker** + **Docker Compose** for containerized deployment
+

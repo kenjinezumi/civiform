@@ -2,33 +2,36 @@
 import React from 'react';
 import { Typography, Box, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import SiteLayout from '../components/layout/SiteLayout';
 
 function Home() {
   const navigate = useNavigate();
+  const { t } = useTranslation(); // <-- Hook for translations
 
   const handleCreateNewForm = () => {
     navigate('/admin/forms/builder');
   };
 
   return (
-    // If your Home is already wrapped in a layout, you can omit SiteLayout here
-    <Box textAlign="center" sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Welcome to CiviForm!
-      </Typography>
-      <Typography variant="body1" sx={{ mb: 3 }}>
-        Build and manage forms with ease—like Kobo Toolbox, but fully customizable.
-      </Typography>
+    <SiteLayout>
+      <Box textAlign="center" sx={{ mt: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          {t('welcomeTitle')}
+        </Typography>
+        <Typography variant="body1" sx={{ mb: 3 }}>
+          {t('welcomeDesc')}
+        </Typography>
 
-      <Button 
-        variant="contained" 
-        color="primary" 
-        onClick={handleCreateNewForm}
-      >
-        Create a New Form
-      </Button>
-    </Box>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={handleCreateNewForm}
+        >
+          {t('createNewForm')}
+        </Button>
+      </Box>
+    </SiteLayout>
   );
 }
 

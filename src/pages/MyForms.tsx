@@ -1,17 +1,22 @@
+// src/pages/MyForms.tsx
 import React from 'react';
 import { Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import SiteLayout from '../components/layout/SiteLayout';
 
 function MyForms() {
+  const { t } = useTranslation();
+
   return (
-    <div>
+    <SiteLayout>
       <Typography variant="h4" gutterBottom>
-        My Forms
+        {t('myFormsTitle')}
       </Typography>
       <Typography>
-        Here you can see all the forms that belong to you.
+        {t('myFormsDesc')}
       </Typography>
       {/* You can list forms, add "create new form" buttons, etc. */}
-    </div>
+    </SiteLayout>
   );
 }
 

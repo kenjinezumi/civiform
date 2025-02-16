@@ -1,13 +1,15 @@
 // src/pages/Login.tsx
-
 import React, { useState } from 'react';
 import { TextField, Button, Typography, Paper, Box } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuthController } from '../controllers/authController';
+import { useTranslation } from 'react-i18next';
 
 function Login() {
   const navigate = useNavigate();
   const { login, error, loading } = useAuthController();
+  const { t } = useTranslation();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -29,7 +31,7 @@ function Login() {
     >
       <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
         <Typography variant="h5" gutterBottom>
-          CiviForm Login
+          {t('loginTitle')}
         </Typography>
         {error && (
           <Typography color="error" sx={{ mb: 2 }}>
@@ -38,14 +40,14 @@ function Login() {
         )}
         <form onSubmit={handleSubmit}>
           <TextField
-            label="Username"
+            label={t('username')}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             fullWidth
             sx={{ mb: 2 }}
           />
           <TextField
-            label="Password"
+            label={t('password')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
@@ -58,7 +60,7 @@ function Login() {
             fullWidth
             disabled={loading}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? t('loggingIn') : t('login')}
           </Button>
         </form>
       </Paper>

@@ -1,7 +1,11 @@
+// src/components/layout/Footer.tsx
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 function Footer() {
+  const { t } = useTranslation();
+
   return (
     <Box
       component="footer"
@@ -13,7 +17,7 @@ function Footer() {
       }}
     >
       <Typography variant="body2" color="textSecondary">
-        &copy; {new Date().getFullYear()} CiviForm. All rights reserved.
+        {t('footerText')}
       </Typography>
     </Box>
   );

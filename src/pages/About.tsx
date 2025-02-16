@@ -2,13 +2,18 @@
 import React from 'react';
 import { Typography } from '@mui/material';
 import SiteLayout from '../components/layout/SiteLayout';
+import { useTranslation } from 'react-i18next';
 
 function About() {
+  const { t } = useTranslation();
+
   return (
     <SiteLayout>
-      <Typography variant="h5">About CiviForm</Typography>
+      <Typography variant="h5" gutterBottom>
+        {t('aboutTitle')}
+      </Typography>
       <Typography variant="body2">
-        CiviForm is a form-building platform designed to ...
+        {t('aboutDesc')}
       </Typography>
     </SiteLayout>
   );

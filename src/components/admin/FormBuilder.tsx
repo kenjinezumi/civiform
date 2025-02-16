@@ -27,6 +27,7 @@ import {
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 
+import { useTranslation } from 'react-i18next';
 import { useFormBuilderController } from '../../controllers/formController';
 import { Question } from '../../types/formTypes';
 import AdminLayout from '../layout/AdminLayout';
@@ -53,6 +54,7 @@ const QUESTION_TYPES = [
 ];
 
 function FormBuilder() {
+  const { t } = useTranslation(); 
   const {
     formSchema,
     loading,
@@ -97,30 +99,32 @@ function FormBuilder() {
     updateQuestion(qIndex, question);
   };
 
-  // Basic preview function (just a placeholder for the demonstration)
+  // Basic preview function (just a placeholder for demonstration)
   const previewQuestion = (index: number) => {
     const q = formSchema.questions[index];
-    alert(`Previewing question: ${q.label}\n(Type: ${q.type})`);
+    alert(
+      `${t('previewingQuestion')}: ${q.label}\n(${t('type')}: ${q.type})`
+    );
   };
 
   return (
     <AdminLayout>
       <Typography variant="h4" gutterBottom>
-        {loading ? 'Loading...' : 'KoBo-like Form Builder'}
+        {loading ? t('loading') : t('formBuilderTitle')}
       </Typography>
       {error && <Typography color="error">{error}</Typography>}
 
       {/* Form Title & Description */}
       <Box sx={{ mb: 3 }}>
         <TextField
-          label="Form Title"
+          label={t('formTitle')}
           value={formSchema.title}
           onChange={(e) => updateTitle(e.target.value)}
           fullWidth
           sx={{ mb: 2 }}
         />
         <TextField
-          label="Form Description"
+          label={t('formDescription')}
           value={formSchema.description}
           onChange={(e) => updateDescription(e.target.value)}
           fullWidth
@@ -129,7 +133,7 @@ function FormBuilder() {
           sx={{ mb: 2 }}
         />
         <Button variant="contained" onClick={addQuestion}>
-          Add Question
+          {t('addQuestion')}
         </Button>
       </Box>
 
@@ -141,7 +145,7 @@ function FormBuilder() {
             title={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                  Q{index + 1}: {q.label || '(Untitled)'}
+                  Q{index + 1}: {q.label || `(${t('untitled')})`}
                 </Typography>
                 <IconButton onClick={() => moveQuestion(index, index - 1)}>
                   <ArrowUpwardIcon />
@@ -154,14 +158,14 @@ function FormBuilder() {
                 </IconButton>
               </Box>
             }
-            subheader={`Question Type: ${q.type}`}
+            subheader={`${t('questionType')}: ${q.type}`}
           />
           <CardContent>
             {/* BASIC SETTINGS */}
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <TextField
-                  label="Question Label"
+                  label={t('questionLabel')}
                   value={q.label}
                   onChange={(e) =>
                     handleQuestionChange(index, 'label', e.target.value)
@@ -172,9 +176,9 @@ function FormBuilder() {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Question Type</InputLabel>
+                  <InputLabel>{t('questionType')}</InputLabel>
                   <Select
-                    label="Question Type"
+                    label={t('questionType')}
                     value={q.type}
                     onChange={(e) =>
                       handleQuestionChange(index, 'type', e.target.value)
@@ -201,15 +205,11 @@ function FormBuilder() {
                     <Checkbox
                       checked={q.required}
                       onChange={(e) =>
-                        handleQuestionChange(
-                          index,
-                          'required',
-                          e.target.checked
-                        )
+                        handleQuestionChange(index, 'required', e.target.checked)
                       }
                     />
                   }
-                  label="Required?"
+                  label={t('requiredQuestion')}
                 />
               </Grid>
 
@@ -217,7 +217,7 @@ function FormBuilder() {
               {q.type !== 'section' && (
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Placeholder"
+                    label={t('placeholder')}
                     value={q.placeholder}
                     onChange={(e) =>
                       handleQuestionChange(index, 'placeholder', e.target.value)
@@ -235,7 +235,7 @@ function FormBuilder() {
                 sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}
               >
                 <Button variant="outlined" onClick={() => previewQuestion(index)}>
-                  Preview
+                  {t('preview')}
                 </Button>
               </Grid>
             </Grid>
@@ -245,11 +245,13 @@ function FormBuilder() {
               q.type === 'checkbox' ||
               q.type === 'select') && (
               <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle2">Choices</Typography>
+                <Typography variant="subtitle2">
+                  {t('choices')}
+                </Typography>
                 {q.choices.map((choice, cIndex) => (
                   <TextField
                     key={cIndex}
-                    label={`Choice ${cIndex + 1}`}
+                    label={`${t('choice')} ${cIndex + 1}`}
                     value={choice}
                     onChange={(e) => updateChoice(index, cIndex, e.target.value)}
                     sx={{ display: 'block', mb: 1 }}
@@ -259,7 +261,7 @@ function FormBuilder() {
                   variant="outlined"
                   onClick={() => addChoiceToQuestion(index)}
                 >
-                  Add Choice
+                  {t('addChoice')}
                 </Button>
               </Box>
             )}
@@ -268,11 +270,10 @@ function FormBuilder() {
             {q.type === 'rating' && (
               <Box sx={{ mt: 3 }}>
                 <Typography variant="subtitle2">
-                  Rating Scale (1-5) by default
+                  {t('ratingScale')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  In a real app, you might allow customizing max rating or
-                  labels.
+                  {t('ratingScaleDesc')}
                 </Typography>
               </Box>
             )}
@@ -280,9 +281,9 @@ function FormBuilder() {
             {/* If file upload type, placeholder for file logic */}
             {q.type === 'file' && (
               <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle2">File Upload</Typography>
+                <Typography variant="subtitle2">{t('fileUpload')}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  In a real app, you'd handle file inputs, storage, etc.
+                  {t('fileUploadDesc')}
                 </Typography>
               </Box>
             )}
@@ -294,13 +295,15 @@ function FormBuilder() {
               sx={{ mt: 3 }}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Advanced Settings</Typography>
+                <Typography variant="subtitle1">
+                  {t('advancedSettings')}
+                </Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2">Help Text</Typography>
+                  <Typography variant="subtitle2">{t('helpText')}</Typography>
                   <TextField
-                    label="Additional Help"
+                    label={t('additionalHelp')}
                     value={q.helpText}
                     onChange={(e) =>
                       handleQuestionChange(index, 'helpText', e.target.value)
@@ -315,16 +318,16 @@ function FormBuilder() {
 
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" gutterBottom>
-                    Skip Logic (Optional)
+                    {t('skipLogicOptional')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Show or hide this question based on another question's answer.
+                    {t('skipLogicDesc')}
                   </Typography>
                   <Grid container spacing={2} sx={{ mt: 1 }}>
                     <Grid item xs={12} sm={3}>
                       <TextField
                         type="number"
-                        label="Reference Q# Index"
+                        label={t('referenceQuestionIndex')}
                         value={q.skipLogic?.referenceQuestionIndex ?? ''}
                         onChange={(e) =>
                           handleQuestionChange(index, 'skipLogic', {
@@ -337,9 +340,9 @@ function FormBuilder() {
                     </Grid>
                     <Grid item xs={12} sm={3}>
                       <FormControl fullWidth>
-                        <InputLabel>Operator</InputLabel>
+                        <InputLabel>{t('operator')}</InputLabel>
                         <Select
-                          label="Operator"
+                          label={t('operator')}
                           value={q.skipLogic?.operator ?? ''}
                           onChange={(e) =>
                             handleQuestionChange(index, 'skipLogic', {
@@ -357,7 +360,7 @@ function FormBuilder() {
                     </Grid>
                     <Grid item xs={12} sm={3}>
                       <TextField
-                        label="Value"
+                        label={t('value')}
                         value={q.skipLogic?.value ?? ''}
                         onChange={(e) =>
                           handleQuestionChange(index, 'skipLogic', {
@@ -370,9 +373,9 @@ function FormBuilder() {
                     </Grid>
                     <Grid item xs={12} sm={3}>
                       <FormControl fullWidth>
-                        <InputLabel>Action</InputLabel>
+                        <InputLabel>{t('action')}</InputLabel>
                         <Select
-                          label="Action"
+                          label={t('action')}
                           value={q.skipLogic?.action ?? ''}
                           onChange={(e) =>
                             handleQuestionChange(index, 'skipLogic', {
@@ -381,8 +384,8 @@ function FormBuilder() {
                             })
                           }
                         >
-                          <MenuItem value="show">Show</MenuItem>
-                          <MenuItem value="hide">Hide</MenuItem>
+                          <MenuItem value="show">{t('show')}</MenuItem>
+                          <MenuItem value="hide">{t('hide')}</MenuItem>
                         </Select>
                       </FormControl>
                     </Grid>
@@ -396,7 +399,7 @@ function FormBuilder() {
 
       {/* SAVE FORM BUTTON */}
       <Button variant="contained" color="primary" onClick={saveForm} disabled={loading}>
-        {loading ? 'Saving...' : 'Save Form'}
+        {loading ? t('saving') : t('saveForm')}
       </Button>
     </AdminLayout>
   );

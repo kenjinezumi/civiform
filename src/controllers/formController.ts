@@ -1,31 +1,43 @@
+// src/controllers/formBuilderController.ts
+
 import { useState, useEffect } from 'react';
 import { formService } from '../services/formService';
 import { FormSchema, Question } from '../types/formTypes';
 
 /**
- * A custom hook that the FormBuilder component can use.
- * It handles all logic: loading an existing form, adding/removing questions, etc.
+ * A custom hook that manages the form schema & editing logic:
+ * - Loading/saving from the backend
+ * - Adding/updating/removing/reordering questions
+ * - Title/description updates
  */
-export function useFormBuilderController(formId?: number) {
+export function useFormBuilderController(formId?: string) {
   const [formSchema, setFormSchema] = useState<FormSchema>({
     title: '',
+    description: '',
     questions: [],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Optional: if formId is provided, we fetch an existing form
+  // If formId is provided, load existing form
   useEffect(() => {
     if (!formId) return;
     setLoading(true);
     formService
-      .fetchFormSchema(formId)
+      .loadForm(formId)
       .then((data) => setFormSchema(data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [formId]);
 
-  // Add a new question (using the service’s default question if you like)
+  function updateTitle(title: string) {
+    setFormSchema((prev) => ({ ...prev, title }));
+  }
+
+  function updateDescription(description: string) {
+    setFormSchema((prev) => ({ ...prev, description }));
+  }
+
   function addQuestion() {
     const newQuestion = formService.createDefaultQuestion();
     setFormSchema((prev) => ({
@@ -34,31 +46,40 @@ export function useFormBuilderController(formId?: number) {
     }));
   }
 
-  // Update a question at a specific index
-  function updateQuestion(index: number, question: Question) {
+  function updateQuestion(index: number, updated: Question) {
     setFormSchema((prev) => {
-      const updatedQuestions = [...prev.questions];
-      updatedQuestions[index] = question;
-      return { ...prev, questions: updatedQuestions };
+      const questions = [...prev.questions];
+      questions[index] = updated;
+      return { ...prev, questions };
     });
   }
 
-  // Remove a question
   function removeQuestion(index: number) {
     setFormSchema((prev) => {
-      const updatedQuestions = prev.questions.filter((_, i) => i !== index);
-      return { ...prev, questions: updatedQuestions };
+      const questions = prev.questions.filter((_, i) => i !== index);
+      return { ...prev, questions };
     });
   }
 
-  // Save the form (delegates to formService)
-  async function saveForm(): Promise<void> {
+  function moveQuestion(fromIndex: number, toIndex: number) {
+    setFormSchema((prev) => {
+      const questions = [...prev.questions];
+      if (toIndex < 0 || toIndex >= questions.length) return prev; // out of range
+      const temp = questions[fromIndex];
+      questions[fromIndex] = questions[toIndex];
+      questions[toIndex] = temp;
+      return { ...prev, questions };
+    });
+  }
+
+  async function saveForm() {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      await formService.saveFormSchema(formSchema);
+      await formService.saveForm(formSchema);
       alert('Form saved successfully!');
     } catch (err: any) {
-      alert(`Error saving form: ${err.message}`);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -68,10 +89,13 @@ export function useFormBuilderController(formId?: number) {
     formSchema,
     loading,
     error,
+    updateTitle,
+    updateDescription,
     addQuestion,
     updateQuestion,
     removeQuestion,
+    moveQuestion,
     saveForm,
-    setFormSchema, // sometimes you want direct access
+    setFormSchema,
   };
 }

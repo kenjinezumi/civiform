@@ -15,7 +15,7 @@ import {
   FormControlLabel,
   Checkbox,
   IconButton,
-  Divider,
+  Divider
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -27,7 +27,7 @@ import { SkipLogicFields } from './SkipLogicFields';
 
 interface QuestionAccordionProps {
   question: Question;
-  numbering: string;   // e.g. "1.U.2" or "1.2.3"
+  numbering: string; // e.g. "1.U.2" or "1.2.3"
   expanded: boolean;
   onToggle: () => void;
 
@@ -45,8 +45,9 @@ export function QuestionAccordion({
   onUpdate,
   onMoveUp,
   onMoveDown,
-  onRemove,
+  onRemove
 }: QuestionAccordionProps) {
+  // Provide a default skipLogic if none
   const skip: SkipLogicCondition = question.skipLogic ?? {
     referenceQuestionIndex: 0,
     operator: '==',
@@ -79,8 +80,10 @@ export function QuestionAccordion({
             onChange={(e) =>
               onUpdate({
                 ...question,
-                // disallow 'section' if needed
-                type: e.target.value === 'section' ? 'text' : (e.target.value as AdvancedQuestionType),
+                // Disallow 'section' if needed
+                type: e.target.value === 'section'
+                  ? 'text'
+                  : (e.target.value as AdvancedQuestionType),
               })
             }
           >
@@ -96,7 +99,9 @@ export function QuestionAccordion({
           control={
             <Checkbox
               checked={question.required}
-              onChange={(e) => onUpdate({ ...question, required: e.target.checked })}
+              onChange={(e) =>
+                onUpdate({ ...question, required: e.target.checked })
+              }
             />
           }
           label="Required?"
@@ -107,7 +112,7 @@ export function QuestionAccordion({
         <Typography variant="subtitle2">Skip Logic</Typography>
         <SkipLogicFields
           skip={skip}
-          onChange={(updated) => onUpdate({ ...question, skipLogic: updated })}
+          onChange={(updatedSkip) => onUpdate({ ...question, skipLogic: updatedSkip })}
         />
 
         <Divider sx={{ my: 2 }} />

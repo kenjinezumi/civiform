@@ -1,3 +1,4 @@
+// src/components/layout/AdminLayout.tsx
 import React, { FC, ReactNode } from 'react';
 import { AppBar, Toolbar, Typography, Container } from '@mui/material';
 

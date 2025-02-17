@@ -1,14 +1,22 @@
 /**
  * src/components/admin/SectionAccordion.tsx
- *
- * Renders a single section & its questions, each question is a <QuestionAccordion>.
  */
 import React from 'react';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, TextField, IconButton, Box, Divider } from '@mui/material';
+import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Typography,
+  TextField,
+  IconButton,
+  Box,
+  Divider
+} from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/Delete';
+
 import { Section, Question } from '../../types/formTypes';
 import { QuestionAccordion } from './QuestionAccordion';
 
@@ -19,19 +27,18 @@ interface Props {
   expanded: boolean;
   onToggle: () => void;
 
-  // callbacks for move / remove the entire section
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
 
-  // moving or updating child questions
+  // Title update
+  onUpdateTitle: (newTitle: string) => void;
+
+  // Child questions
   onUpdateQuestion: (qIndex: number, updated: Question) => void;
   onMoveQuestionUp: (qIndex: number) => void;
   onMoveQuestionDown: (qIndex: number) => void;
   onRemoveQuestion: (qIndex: number) => void;
-
-  // For numbering
-  // If this is section #1 on page #2 => "2.1" for the section
 }
 
 export function SectionAccordion({
@@ -43,10 +50,11 @@ export function SectionAccordion({
   onMoveUp,
   onMoveDown,
   onRemove,
+  onUpdateTitle,
   onUpdateQuestion,
   onMoveQuestionUp,
   onMoveQuestionDown,
-  onRemoveQuestion,
+  onRemoveQuestion
 }: Props) {
   const sectionNumLabel = `${pageIndex + 1}.${sectionIndex + 1}`;
 
@@ -54,7 +62,7 @@ export function SectionAccordion({
     <Accordion expanded={expanded} onChange={onToggle} sx={{ mb: 2 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Typography>
-          {sectionNumLabel} - {section.title || '(untitled section)'}
+          {sectionNumLabel} - {section.title || '(untitled)'}
         </Typography>
       </AccordionSummary>
       <AccordionDetails>
@@ -62,9 +70,7 @@ export function SectionAccordion({
         <TextField
           label="Section Title"
           value={section.title}
-          onChange={(e) => {
-            section.title = e.target.value; // or handle immutably from the parent
-          }}
+          onChange={(e) => onUpdateTitle(e.target.value)}
           fullWidth
           sx={{ mb: 2 }}
         />
@@ -92,7 +98,7 @@ export function SectionAccordion({
               question={question}
               numbering={numbering}
               expanded={false} // or track expansions at a higher level
-              onToggle={() => { /* handle expansions at higher level */ }}
+              onToggle={() => {}}
               onUpdate={(updated) => onUpdateQuestion(qIndex, updated)}
               onMoveUp={() => onMoveQuestionUp(qIndex)}
               onMoveDown={() => onMoveQuestionDown(qIndex)}

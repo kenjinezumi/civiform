@@ -1,17 +1,28 @@
 /**
  * src/components/admin/PageAccordion.tsx
  *
- * Renders a single Page, with unsectioned questions + multiple sections.
+ * Renders a single Page, including unsectioned questions and sections.
  */
 import React from 'react';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, TextField, Box, IconButton, Divider, Button } from '@mui/material';
+import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Typography,
+  TextField,
+  Box,
+  IconButton,
+  Divider,
+  Button
+} from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Page, Question, Section } from '../../types/formTypes';
-import { QuestionAccordion } from './QuestionAccordion';
-import { SectionAccordion } from './SectionAccordion';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/Delete';
+
+import { Page, Question } from '../../types/formTypes';
+import { QuestionAccordion } from './QuestionAccordion';
+import { SectionAccordion } from './SectionAccordion';
 
 interface PageAccordionProps {
   page: Page;
@@ -23,6 +34,10 @@ interface PageAccordionProps {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemovePage: () => void;
+
+  // Update page's title & description
+  onUpdateTitle: (pageIndex: number, newTitle: string) => void;
+  onUpdateDescription: (pageIndex: number, newDesc: string) => void;
 
   // Add unsectioned question or add section
   onAddUnsectionedQuestion: () => void;
@@ -40,11 +55,7 @@ interface PageAccordionProps {
   onRemoveSection: (secIndex: number) => void;
 
   // For child questions in a section
-  onUpdateSectionQuestion: (
-    secIndex: number,
-    qIndex: number,
-    updated: Question
-  ) => void;
+  onUpdateSectionQuestion: (secIndex: number, qIndex: number, updated: Question) => void;
   onMoveSectionQuestionUp: (secIndex: number, qIndex: number) => void;
   onMoveSectionQuestionDown: (secIndex: number, qIndex: number) => void;
   onRemoveSectionQuestion: (secIndex: number, qIndex: number) => void;
@@ -58,6 +69,8 @@ export function PageAccordion({
   onMoveUp,
   onMoveDown,
   onRemovePage,
+  onUpdateTitle,
+  onUpdateDescription,
   onAddUnsectionedQuestion,
   onAddSection,
   onUpdateUnsectionedQuestion,
@@ -78,32 +91,29 @@ export function PageAccordion({
     <Accordion expanded={expanded} onChange={onToggle}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Typography>
-          Page {pageNumLabel}: {page.title || '(untitled)'}
+          Page {pageNumLabel}: {page.title || '(untitled page)'}
         </Typography>
       </AccordionSummary>
       <AccordionDetails>
-        {/* Page Title / Desc */}
+        {/* Page Title / Description */}
         <TextField
           label="Page Title"
           value={page.title}
-          onChange={(e) => {
-            page.title = e.target.value;
-          }}
+          onChange={(e) => onUpdateTitle(pageIndex, e.target.value)}
           fullWidth
           sx={{ mb: 2 }}
         />
         <TextField
           label="Page Description"
           value={page.description}
-          onChange={(e) => {
-            page.description = e.target.value;
-          }}
+          onChange={(e) => onUpdateDescription(pageIndex, e.target.value)}
           fullWidth
           multiline
           rows={2}
           sx={{ mb: 2 }}
         />
 
+        {/* Page-level actions */}
         <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
           <IconButton onClick={onMoveUp}>
             <ArrowUpwardIcon />
@@ -120,16 +130,15 @@ export function PageAccordion({
 
         {/* Unsectioned questions */}
         {page.unsectioned.map((q, qIndex) => {
-          // numbering => pageNumLabel + ".U." + (qIndex+1)
           const numbering = `${pageNumLabel}.U.${qIndex + 1}`;
           return (
             <QuestionAccordion
               key={qIndex}
               question={q}
               numbering={numbering}
-              expanded={false}
-              onToggle={() => { /* handle expansions outside or track locally */ }}
-              onUpdate={(upd) => onUpdateUnsectionedQuestion(qIndex, upd)}
+              expanded={false} // or manage expansions in parent
+              onToggle={() => {}}
+              onUpdate={(updated) => onUpdateUnsectionedQuestion(qIndex, updated)}
               onMoveUp={() => onMoveUnsectionedQuestionUp(qIndex)}
               onMoveDown={() => onMoveUnsectionedQuestionDown(qIndex)}
               onRemove={() => onRemoveUnsectionedQuestion(qIndex)}
@@ -137,10 +146,17 @@ export function PageAccordion({
           );
         })}
 
-        <Button variant="outlined" onClick={onAddUnsectionedQuestion} sx={{ mr: 2 }}>
+        <Button
+          variant="outlined"
+          onClick={onAddUnsectionedQuestion}
+          sx={{ mr: 2 }}
+        >
           Add Unsectioned Question
         </Button>
-        <Button variant="outlined" onClick={onAddSection}>
+        <Button
+          variant="outlined"
+          onClick={onAddSection}
+        >
           Add Section
         </Button>
 
@@ -148,24 +164,22 @@ export function PageAccordion({
 
         {/* Sections */}
         {page.sections.map((sec, sIndex) => {
-          // we can do a SectionAccordion or a simple approach
-          const sectionExpanded = false; // track expansions outside if we want
+          const sectionNum = sIndex + 1;
           return (
             <SectionAccordion
               key={sIndex}
               section={sec}
               pageIndex={pageIndex}
               sectionIndex={sIndex}
-              expanded={sectionExpanded}
-              onToggle={() => {
-                // handle outside
-              }}
+              expanded={false} // or manage expansions in parent
+              onToggle={() => {}}
               onMoveUp={() => onMoveSectionUp(sIndex)}
               onMoveDown={() => onMoveSectionDown(sIndex)}
               onRemove={() => onRemoveSection(sIndex)}
-              onUpdateQuestion={(qIndex, updated) =>
-                onUpdateSectionQuestion(sIndex, qIndex, updated)
-              }
+              onUpdateTitle={(newTitle) => {
+                /* you can do a callback that calls setForm immutably. Or pass through. */
+              }}
+              onUpdateQuestion={(qIndex, updated) => onUpdateSectionQuestion(sIndex, qIndex, updated)}
               onMoveQuestionUp={(qIndex) => onMoveSectionQuestionUp(sIndex, qIndex)}
               onMoveQuestionDown={(qIndex) => onMoveSectionQuestionDown(sIndex, qIndex)}
               onRemoveQuestion={(qIndex) => onRemoveSectionQuestion(sIndex, qIndex)}

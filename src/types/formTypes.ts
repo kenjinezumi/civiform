@@ -1,8 +1,5 @@
 /**
  * src/types/formTypes.ts
- *
- * Hierarchical model:
- * - FormSchema -> pages[] -> unsectioned[] + sections[] -> questions[]
  */
 export type OperatorType = '==' | '!=' | 'contains' | 'not-contains';
 export type ActionType = 'show' | 'hide';
@@ -26,7 +23,7 @@ export type AdvancedQuestionType =
   | 'select'
   | 'rating'
   | 'file'
-  | 'section'; // We'll ensure we never add 'section' inside a real section's questions.
+  | 'section';
 
 export interface Question {
   label: string;
@@ -40,13 +37,13 @@ export interface Question {
 
 export interface Section {
   title: string;
-  questions: Question[]; // child questions
+  questions: Question[];
 }
 
 export interface Page {
   title: string;
   description: string;
-  unsectioned: Question[]; // questions not inside a section
+  unsectioned: Question[];
   sections: Section[];
 }
 

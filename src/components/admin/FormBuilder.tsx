@@ -1,407 +1,543 @@
+/**
+ * src/components/admin/FormBuilder.tsx
+ *
+ * A final example combining:
+ * - Collapsible sections
+ * - Collapsible child questions
+ * - Expand/Collapse all
+ * - Skip logic fields
+ * - "Which page?" field
+ * - Add question under a section
+ */
+
 import React, { useState } from 'react';
 import {
   Typography,
   Button,
   Box,
   IconButton,
-  MenuItem,
-  Checkbox,
-  FormControlLabel,
-  Select,
-  InputLabel,
-  FormControl,
-  Divider,
   Card,
   CardContent,
   CardHeader,
-  Grid,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   TextField,
+  FormControl,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControlLabel,
+  Checkbox,
+  Divider,
 } from '@mui/material';
 import {
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
   Delete as DeleteIcon,
   ArrowUpward as ArrowUpwardIcon,
   ArrowDownward as ArrowDownwardIcon,
-  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 
 import { useTranslation } from 'react-i18next';
-import { useFormBuilderController } from '../../controllers/formController';
-import { Question } from '../../types/formTypes';
-import AdminLayout from '../layout/AdminLayout';
+import { useFormBuilderController } from '../../controllers/useFormBuilderController';
+import { Question, AdvancedQuestionType } from '../../types/formTypes';
 
-/**
- * Additional types to demonstrate advanced question types:
- * - 'rating' (1-5)
- * - 'file' (file upload placeholder)
- * - 'section' (non-question, used as a title/heading)
- */
-const QUESTION_TYPES = [
-  { value: 'text', label: 'Text' },
-  { value: 'number', label: 'Number' },
-  { value: 'date', label: 'Date' },
-  { value: 'time', label: 'Time' },
-  { value: 'email', label: 'Email' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'radio', label: 'Single Select (Radio)' },
-  { value: 'checkbox', label: 'Multi Select (Checkbox)' },
-  { value: 'select', label: 'Dropdown' },
-  { value: 'rating', label: 'Rating (1-5)' },
-  { value: 'file', label: 'File Upload' },
-  { value: 'section', label: 'Section Title (non-question)' },
-];
+interface SectionGroup {
+  sectionIndex: number | null;
+  sectionQuestion?: Question;
+  items: Array<{ question: Question; index: number }>;
+}
+
+/** Group questions by last 'section' encountered. */
+function groupQuestionsBySection(questions: Question[]): SectionGroup[] {
+  const groups: SectionGroup[] = [];
+  let currentGroup: SectionGroup = {
+    sectionIndex: null,
+    sectionQuestion: undefined,
+    items: [],
+  };
+
+  questions.forEach((q, i) => {
+    if (q.type === 'section') {
+      // push old group if not empty
+      if (currentGroup.sectionIndex !== null || currentGroup.items.length > 0) {
+        groups.push(currentGroup);
+      }
+      currentGroup = {
+        sectionIndex: i,
+        sectionQuestion: q,
+        items: [],
+      };
+    } else {
+      currentGroup.items.push({ question: q, index: i });
+    }
+  });
+  // push final group
+  if (currentGroup.sectionIndex !== null || currentGroup.items.length > 0) {
+    groups.push(currentGroup);
+  }
+  return groups;
+}
 
 function FormBuilder() {
-  const { t } = useTranslation(); 
+  const { t } = useTranslation();
   const {
     formSchema,
     loading,
     error,
-    updateTitle,
-    updateDescription,
     addQuestion,
+    insertQuestionAtIndex,
     updateQuestion,
     removeQuestion,
     moveQuestion,
+    updateTitle,
+    updateDescription,
     saveForm,
   } = useFormBuilderController();
 
-  // Track expanded panels for advanced settings
-  const [expanded, setExpanded] = useState<number | false>(false);
+  // Group by sections
+  const groups = groupQuestionsBySection(formSchema.questions);
 
-  const handleAccordionToggle = (panelIndex: number) => {
-    setExpanded((prev) => (prev === panelIndex ? false : panelIndex));
+  // Keep track of "expandedSections" and "expandedQuestions"
+  const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
+  const [allExpanded, setAllExpanded] = useState(false);
+
+  // Toggle a single section
+  const handleToggleSection = (secIndex: number) => {
+    setExpandedSections((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(secIndex)) {
+        newSet.delete(secIndex);
+      } else {
+        newSet.add(secIndex);
+      }
+      return newSet;
+    });
   };
 
-  // Helper: update a question property
-  const handleQuestionChange = (
-    index: number,
-    field: keyof Question,
-    value: any
-  ) => {
-    const updatedQ = { ...formSchema.questions[index], [field]: value };
-    updateQuestion(index, updatedQ);
+  // Toggle a single child question
+  const handleToggleQuestion = (qIndex: number) => {
+    setExpandedQuestions((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(qIndex)) {
+        newSet.delete(qIndex);
+      } else {
+        newSet.add(qIndex);
+      }
+      return newSet;
+    });
   };
 
-  // Add a choice to multiple-choice types
-  const addChoiceToQuestion = (index: number) => {
-    const question = formSchema.questions[index];
-    question.choices = [...question.choices, ''];
-    updateQuestion(index, question);
+  // Expand or Collapse ALL sections + child questions
+  const handleExpandCollapseAll = () => {
+    setAllExpanded(!allExpanded);
+    if (!allExpanded) {
+      // expand everything
+      const secSet = new Set<number>();
+      const qSet = new Set<number>();
+      groups.forEach((group) => {
+        if (group.sectionIndex !== null) {
+          secSet.add(group.sectionIndex);
+        }
+        group.items.forEach((item) => qSet.add(item.index));
+      });
+      setExpandedSections(secSet);
+      setExpandedQuestions(qSet);
+    } else {
+      // collapse everything
+      setExpandedSections(new Set());
+      setExpandedQuestions(new Set());
+    }
   };
 
-  // Update a specific choice
-  const updateChoice = (qIndex: number, cIndex: number, value: string) => {
-    const question = formSchema.questions[qIndex];
-    question.choices[cIndex] = value;
-    updateQuestion(qIndex, question);
+  // Add a top-level unsectioned question
+  const handleAddQuestion = () => {
+    addQuestion({
+      label: '',
+      type: 'text',
+      required: false,
+      choices: [],
+      helpText: '',
+      placeholder: '',
+    });
   };
 
-  // Basic preview function (just a placeholder for demonstration)
-  const previewQuestion = (index: number) => {
-    const q = formSchema.questions[index];
-    alert(
-      `${t('previewingQuestion')}: ${q.label}\n(${t('type')}: ${q.type})`
+  // Add a new "section" at the end
+  const handleAddSection = () => {
+    addQuestion({
+      label: 'New Section',
+      type: 'section',
+      required: false,
+      choices: [],
+      helpText: '',
+      placeholder: '',
+    });
+  };
+
+  // Insert a new question after the last item in a group
+  const handleAddQuestionInGroup = (group: SectionGroup) => {
+    let insertIndex: number;
+    if (group.sectionIndex !== null) {
+      // has a real section
+      if (group.items.length > 0) {
+        const lastItemIndex = group.items[group.items.length - 1].index;
+        insertIndex = lastItemIndex + 1;
+      } else {
+        insertIndex = group.sectionIndex + 1; // no child items => after the section
+      }
+    } else {
+      // unsectioned group
+      if (group.items.length > 0) {
+        const lastIndex = group.items[group.items.length - 1].index;
+        insertIndex = lastIndex + 1;
+      } else {
+        // truly empty
+        insertIndex = formSchema.questions.length;
+      }
+    }
+
+    insertQuestionAtIndex(
+      {
+        label: '',
+        type: 'text',
+        required: false,
+        helpText: '',
+        placeholder: '',
+        choices: [],
+      },
+      insertIndex
     );
   };
 
   return (
-    <AdminLayout>
+    <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        {loading ? t('loading') : t('formBuilderTitle')}
+        {loading ? 'Loading...' : 'Form Builder with Skip Logic & Sections'}
       </Typography>
       {error && <Typography color="error">{error}</Typography>}
 
-      {/* Form Title & Description */}
-      <Box sx={{ mb: 3 }}>
-        <TextField
-          label={t('formTitle')}
-          value={formSchema.title}
-          onChange={(e) => updateTitle(e.target.value)}
-          fullWidth
-          sx={{ mb: 2 }}
-        />
-        <TextField
-          label={t('formDescription')}
-          value={formSchema.description}
-          onChange={(e) => updateDescription(e.target.value)}
-          fullWidth
-          multiline
-          rows={2}
-          sx={{ mb: 2 }}
-        />
-        <Button variant="contained" onClick={addQuestion}>
-          {t('addQuestion')}
+      {/* Title & Desc */}
+      <TextField
+        label="Form Title"
+        value={formSchema.title}
+        onChange={(e) => updateTitle(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+      />
+      <TextField
+        label="Form Description"
+        value={formSchema.description}
+        onChange={(e) => updateDescription(e.target.value)}
+        fullWidth
+        multiline
+        rows={2}
+        sx={{ mb: 2 }}
+      />
+
+      {/* Buttons */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Button variant="contained" onClick={handleAddQuestion}>
+          Add Unsectioned Question
+        </Button>
+        <Button variant="outlined" onClick={handleAddSection}>
+          Create Section
+        </Button>
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={handleExpandCollapseAll}
+          startIcon={allExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          sx={{ ml: 'auto' }}
+        >
+          {allExpanded ? 'Collapse All' : 'Expand All'}
         </Button>
       </Box>
 
-      {/* Render each question in a Card */}
-      {formSchema.questions.map((q, index) => (
-        <Card key={index} variant="outlined" sx={{ mb: 2 }}>
-          <CardHeader
-            sx={{ bgcolor: '#f5f5f5' }}
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                  Q{index + 1}: {q.label || `(${t('untitled')})`}
-                </Typography>
-                <IconButton onClick={() => moveQuestion(index, index - 1)}>
-                  <ArrowUpwardIcon />
-                </IconButton>
-                <IconButton onClick={() => moveQuestion(index, index + 1)}>
-                  <ArrowDownwardIcon />
-                </IconButton>
-                <IconButton onClick={() => removeQuestion(index)}>
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
-            }
-            subheader={`${t('questionType')}: ${q.type}`}
-          />
-          <CardContent>
-            {/* BASIC SETTINGS */}
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  label={t('questionLabel')}
-                  value={q.label}
-                  onChange={(e) =>
-                    handleQuestionChange(index, 'label', e.target.value)
-                  }
-                  fullWidth
+      {/* Render grouped sections */}
+      {groups.map((group, gIdx) => {
+        const { sectionIndex, sectionQuestion, items } = group;
+        const groupTitle = sectionQuestion
+          ? `Section: ${sectionQuestion.label || '(untitled)'}`
+          : 'Unsectioned Questions';
+
+        return (
+          <Card key={gIdx} variant="outlined" sx={{ mb: 3 }}>
+            <CardHeader
+              title={groupTitle}
+              action={
+                <Button variant="outlined" onClick={() => handleAddQuestionInGroup(group)}>
+                  Add Question Here
+                </Button>
+              }
+            />
+            <CardContent>
+              {/* If there's a real section => collapsible accordion */}
+              {sectionQuestion && (
+                <Accordion
+                  expanded={expandedSections.has(sectionIndex!)}
+                  onChange={() => {
+                    if (sectionIndex !== null) handleToggleSection(sectionIndex);
+                  }}
                   sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>{t('questionType')}</InputLabel>
-                  <Select
-                    label={t('questionType')}
-                    value={q.type}
-                    onChange={(e) =>
-                      handleQuestionChange(index, 'type', e.target.value)
-                    }
-                  >
-                    {QUESTION_TYPES.map((typeOption) => (
-                      <MenuItem key={typeOption.value} value={typeOption.value}>
-                        {typeOption.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              {/* Required / Basic toggles */}
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                sx={{ display: 'flex', alignItems: 'center' }}
-              >
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={q.required}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography>Section Advanced Settings</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <TextField
+                      label="Section Label"
+                      value={sectionQuestion.label}
                       onChange={(e) =>
-                        handleQuestionChange(index, 'required', e.target.checked)
+                        updateQuestion(sectionIndex!, {
+                          ...sectionQuestion,
+                          label: e.target.value,
+                        })
                       }
+                      fullWidth
+                      sx={{ mb: 2 }}
                     />
-                  }
-                  label={t('requiredQuestion')}
-                />
-              </Grid>
 
-              {/* If not a 'section' question type, show placeholder */}
-              {q.type !== 'section' && (
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label={t('placeholder')}
-                    value={q.placeholder}
-                    onChange={(e) =>
-                      handleQuestionChange(index, 'placeholder', e.target.value)
-                    }
-                    fullWidth
-                  />
-                </Grid>
+                    {/* Which page? */}
+                    <TextField
+                      type="number"
+                      label="Which page?"
+                      value={sectionQuestion.pageNumber ?? 1}
+                      onChange={(e) => {
+                        const pg = parseInt(e.target.value || '1', 10);
+                        updateQuestion(sectionIndex!, {
+                          ...sectionQuestion,
+                          pageNumber: pg,
+                        });
+                      }}
+                      fullWidth
+                      sx={{ mb: 2 }}
+                    />
+
+                    {/* Move / Remove section */}
+                    <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                      <IconButton
+                        onClick={() => moveQuestion(sectionIndex!, sectionIndex! - 1)}
+                      >
+                        <ArrowUpwardIcon />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => moveQuestion(sectionIndex!, sectionIndex! + 1)}
+                      >
+                        <ArrowDownwardIcon />
+                      </IconButton>
+                      <IconButton onClick={() => removeQuestion(sectionIndex!)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
               )}
 
-              {/* Quick Preview button */}
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}
-              >
-                <Button variant="outlined" onClick={() => previewQuestion(index)}>
-                  {t('preview')}
-                </Button>
-              </Grid>
-            </Grid>
+              {/* Child questions */}
+              {items.map(({ question, index }) => {
+                // If skip logic is missing, we'll default on read
+                const skip = question.skipLogic || {
+                  referenceQuestionIndex: 0,
+                  operator: '==',
+                  value: '',
+                  action: 'show',
+                };
 
-            {/* For multiple-choice or rating question types, show choices */}
-            {(q.type === 'radio' ||
-              q.type === 'checkbox' ||
-              q.type === 'select') && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle2">
-                  {t('choices')}
-                </Typography>
-                {q.choices.map((choice, cIndex) => (
-                  <TextField
-                    key={cIndex}
-                    label={`${t('choice')} ${cIndex + 1}`}
-                    value={choice}
-                    onChange={(e) => updateChoice(index, cIndex, e.target.value)}
-                    sx={{ display: 'block', mb: 1 }}
-                  />
-                ))}
-                <Button
-                  variant="outlined"
-                  onClick={() => addChoiceToQuestion(index)}
-                >
-                  {t('addChoice')}
-                </Button>
-              </Box>
-            )}
+                const isExpanded = expandedQuestions.has(index);
 
-            {/* If rating type, show a note about scale */}
-            {q.type === 'rating' && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle2">
-                  {t('ratingScale')}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {t('ratingScaleDesc')}
-                </Typography>
-              </Box>
-            )}
+                return (
+                  <Accordion
+                    key={index}
+                    expanded={isExpanded}
+                    onChange={() => handleToggleQuestion(index)}
+                    sx={{ mb: 2 }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography>
+                        Q{index + 1} - {question.label || '(untitled)'}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      {/* Basic fields */}
+                      <TextField
+                        label="Question Label"
+                        value={question.label}
+                        onChange={(e) =>
+                          updateQuestion(index, {
+                            ...question,
+                            label: e.target.value,
+                          })
+                        }
+                        fullWidth
+                        sx={{ mb: 2 }}
+                      />
 
-            {/* If file upload type, placeholder for file logic */}
-            {q.type === 'file' && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle2">{t('fileUpload')}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {t('fileUploadDesc')}
-                </Typography>
-              </Box>
-            )}
-
-            {/* ADVANCED SETTINGS (Accordion) */}
-            <Accordion
-              expanded={expanded === index}
-              onChange={() => handleAccordionToggle(index)}
-              sx={{ mt: 3 }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">
-                  {t('advancedSettings')}
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2">{t('helpText')}</Typography>
-                  <TextField
-                    label={t('additionalHelp')}
-                    value={q.helpText}
-                    onChange={(e) =>
-                      handleQuestionChange(index, 'helpText', e.target.value)
-                    }
-                    fullWidth
-                    multiline
-                    rows={2}
-                    sx={{ mt: 1 }}
-                  />
-                </Box>
-                <Divider sx={{ my: 2 }} />
-
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    {t('skipLogicOptional')}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('skipLogicDesc')}
-                  </Typography>
-                  <Grid container spacing={2} sx={{ mt: 1 }}>
-                    <Grid item xs={12} sm={3}>
                       <TextField
                         type="number"
-                        label={t('referenceQuestionIndex')}
-                        value={q.skipLogic?.referenceQuestionIndex ?? ''}
-                        onChange={(e) =>
-                          handleQuestionChange(index, 'skipLogic', {
-                            ...q.skipLogic,
-                            referenceQuestionIndex: +e.target.value,
-                          })
-                        }
+                        label="Which page?"
+                        value={question.pageNumber ?? 1}
+                        onChange={(e) => {
+                          const pg = parseInt(e.target.value || '1', 10);
+                          updateQuestion(index, { ...question, pageNumber: pg });
+                        }}
                         fullWidth
+                        sx={{ mb: 2 }}
                       />
-                    </Grid>
-                    <Grid item xs={12} sm={3}>
-                      <FormControl fullWidth>
-                        <InputLabel>{t('operator')}</InputLabel>
-                        <Select
-                          label={t('operator')}
-                          value={q.skipLogic?.operator ?? ''}
-                          onChange={(e) =>
-                            handleQuestionChange(index, 'skipLogic', {
-                              ...q.skipLogic,
-                              operator: e.target.value,
-                            })
-                          }
-                        >
-                          <MenuItem value="==">==</MenuItem>
-                          <MenuItem value="!=">!=</MenuItem>
-                          <MenuItem value="contains">contains</MenuItem>
-                          <MenuItem value="not-contains">not-contains</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12} sm={3}>
-                      <TextField
-                        label={t('value')}
-                        value={q.skipLogic?.value ?? ''}
-                        onChange={(e) =>
-                          handleQuestionChange(index, 'skipLogic', {
-                            ...q.skipLogic,
-                            value: e.target.value,
-                          })
-                        }
-                        fullWidth
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={3}>
-                      <FormControl fullWidth>
-                        <InputLabel>{t('action')}</InputLabel>
-                        <Select
-                          label={t('action')}
-                          value={q.skipLogic?.action ?? ''}
-                          onChange={(e) =>
-                            handleQuestionChange(index, 'skipLogic', {
-                              ...q.skipLogic,
-                              action: e.target.value,
-                            })
-                          }
-                        >
-                          <MenuItem value="show">{t('show')}</MenuItem>
-                          <MenuItem value="hide">{t('hide')}</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                  </Grid>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          </CardContent>
-        </Card>
-      ))}
 
-      {/* SAVE FORM BUTTON */}
+                      <FormControl fullWidth sx={{ mb: 2 }}>
+                        <InputLabel>Question Type</InputLabel>
+                        <Select
+                          label="Question Type"
+                          value={question.type}
+                          onChange={(e) =>
+                            updateQuestion(index, {
+                              ...question,
+                              type: e.target.value as AdvancedQuestionType,
+                            })
+                          }
+                        >
+                          <MenuItem value="text">Text</MenuItem>
+                          <MenuItem value="radio">Radio</MenuItem>
+                          <MenuItem value="checkbox">Checkbox</MenuItem>
+                          <MenuItem value="select">Dropdown</MenuItem>
+                          <MenuItem value="rating">Rating (1-5)</MenuItem>
+                          {/* etc... */}
+                        </Select>
+                      </FormControl>
+
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={question.required}
+                            onChange={(e) =>
+                              updateQuestion(index, {
+                                ...question,
+                                required: e.target.checked,
+                              })
+                            }
+                          />
+                        }
+                        label="Required?"
+                      />
+
+                      <Divider sx={{ my: 2 }} />
+
+                      {/* Skip Logic fields */}
+                      <Typography variant="subtitle2" gutterBottom>
+                        Skip Logic
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                        <TextField
+                          label="Reference Q#"
+                          type="number"
+                          value={skip.referenceQuestionIndex}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value || '0', 10);
+                            updateQuestion(index, {
+                              ...question,
+                              skipLogic: {
+                                ...skip,
+                                referenceQuestionIndex: val,
+                              },
+                            });
+                          }}
+                          sx={{ width: 130 }}
+                        />
+                        <FormControl sx={{ width: 150 }}>
+                          <InputLabel>Operator</InputLabel>
+                          <Select
+                            label="Operator"
+                            value={skip.operator}
+                            onChange={(e) => {
+                              updateQuestion(index, {
+                                ...question,
+                                skipLogic: {
+                                  ...skip,
+                                  operator: e.target.value as '==' | '!=' | 'contains' | 'not-contains',
+                                },
+                              });
+                            }}
+                          >
+                            <MenuItem value="==">==</MenuItem>
+                            <MenuItem value="!=">!=</MenuItem>
+                            <MenuItem value="contains">contains</MenuItem>
+                            <MenuItem value="not-contains">not-contains</MenuItem>
+                          </Select>
+                        </FormControl>
+                        <TextField
+                          label="Value"
+                          value={skip.value}
+                          onChange={(e) => {
+                            updateQuestion(index, {
+                              ...question,
+                              skipLogic: {
+                                ...skip,
+                                value: e.target.value,
+                              },
+                            });
+                          }}
+                          sx={{ width: 130 }}
+                        />
+                        <FormControl sx={{ width: 120 }}>
+                          <InputLabel>Action</InputLabel>
+                          <Select
+                            label="Action"
+                            value={skip.action}
+                            onChange={(e) => {
+                              updateQuestion(index, {
+                                ...question,
+                                skipLogic: {
+                                  ...skip,
+                                  action: e.target.value as 'show' | 'hide',
+                                },
+                              });
+                            }}
+                          >
+                            <MenuItem value="show">Show</MenuItem>
+                            <MenuItem value="hide">Hide</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+
+                      <Divider sx={{ my: 2 }} />
+
+                      {/* Move / Remove question */}
+                      <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                        <IconButton onClick={() => moveQuestion(index, index - 1)}>
+                          <ArrowUpwardIcon />
+                        </IconButton>
+                        <IconButton onClick={() => moveQuestion(index, index + 1)}>
+                          <ArrowDownwardIcon />
+                        </IconButton>
+                        <IconButton onClick={() => removeQuestion(index)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </AccordionDetails>
+                  </Accordion>
+                );
+              })}
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      <Divider sx={{ my: 3 }} />
       <Button variant="contained" color="primary" onClick={saveForm} disabled={loading}>
-        {loading ? t('saving') : t('saveForm')}
+        {loading ? 'Saving...' : 'Save Form'}
       </Button>
-    </AdminLayout>
+      <Button
+        variant="outlined"
+        color="secondary"
+        onClick={handleExpandCollapseAll}
+        startIcon={allExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        sx={{ ml: 2 }}
+      >
+        {allExpanded ? 'Collapse All' : 'Expand All'}
+      </Button>
+    </Box>
   );
 }
 

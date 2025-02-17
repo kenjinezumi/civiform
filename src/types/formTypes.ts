@@ -1,5 +1,8 @@
-// src/types/formTypes.ts
+/** src/types/formTypes.ts */
 
+/**
+ * Allowed question types.
+ */
 export type AdvancedQuestionType =
   | 'text'
   | 'number'
@@ -14,30 +17,35 @@ export type AdvancedQuestionType =
   | 'file'
   | 'section';
 
+/**
+ * Skip logic definition for a question.
+ */
 export interface SkipLogicCondition {
-  // For demonstration: we let the user pick the index of the question to reference
-  referenceQuestionIndex: number;
+  referenceQuestionIndex: number; // e.g., index in the form's questions array
   operator: '==' | '!=' | 'contains' | 'not-contains';
-  value: string; // "Yes", "No", etc.
+  value: string;
   action: 'show' | 'hide';
 }
 
+/**
+ * One question in the form, or a "section" if type='section'.
+ */
 export interface Question {
   label: string;
   type: AdvancedQuestionType;
   required: boolean;
-  helpText: string;
   placeholder: string;
-
-  // For multiple-choice types (radio, checkbox, select)
+  helpText: string;
   choices: string[];
-
-  // Basic skip logic
   skipLogic?: SkipLogicCondition;
+  pageNumber?: number;
 }
 
+/**
+ * Entire form schema.
+ */
 export interface FormSchema {
   title: string;
-  description?: string;
+  description: string;
   questions: Question[];
 }

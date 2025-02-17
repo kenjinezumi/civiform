@@ -1,0 +1,9 @@
+runtime: nodejs16
+env: standard
+
+entrypoint: npm run start
+
+instance_class: F1  # optional, choose an instance class (F1 is the smallest)
+automatic_scaling:
+  min_instances: 1
+  max_instances: 2

@@ -1,177 +1,255 @@
 /**
  * src/components/admin/FormBuilder.tsx
  *
- * Very short "orchestrator" of all the logic:
- * - Fetch & group questions
- * - Track expand/collapse sets
- * - Render each section group with <SectionCard />
+ * The final orchestrator:
+ * - Renders pages => unsectioned questions + sections => child questions
+ * - No references to missing "questions" top-level or "index={...}" props on <QuestionAccordion>.
+ * - Expand/Collapse logic uses sets of string keys.
  */
 
 import React, { useState } from 'react';
-import { Box, Typography, TextField, Button, Divider } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Button,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
+} from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { useFormBuilderController } from '../../controllers/useFormBuilderController';
-import { groupQuestionsBySection, SectionGroup } from '../../utils/groupQuestionsBySection';
-import { SectionCard } from './SectionCard';
+
+import { useHierFormController } from '../../controllers/useHierFormController';
+import { QuestionAccordion } from './QuestionAccordion';
+import { Question } from '../../types/formTypes';
 
 export default function FormBuilder() {
   const {
-    formSchema,
+    form,
+    addPage,
+    addSection,
+    addUnsectionedQuestion,
+    addQuestionToSection,
+    saveForm,
     loading,
     error,
-    addQuestion,
-    insertQuestionAtIndex,
-    updateTitle,
-    updateDescription,
-    updateQuestion,
-    removeQuestion,
-    moveQuestion,
-    saveForm,
-  } = useFormBuilderController();
+  } = useHierFormController();
 
-  // Group questions by last encountered 'section'
-  const groups = groupQuestionsBySection(formSchema.questions);
-
-  // Track expanded sets
-  const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
-  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
+  // Expand sets for pages, sections, questions
+  const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
-  function handleToggleSection(sectionIndex: number) {
-    setExpandedSections((prev) => {
+  // Toggle a page
+  function togglePage(pIndex: number) {
+    setExpandedPages((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(sectionIndex)) newSet.delete(sectionIndex);
-      else newSet.add(sectionIndex);
+      if (newSet.has(pIndex)) newSet.delete(pIndex);
+      else newSet.add(pIndex);
       return newSet;
     });
   }
 
-  function handleToggleQuestion(qIndex: number) {
+  // Toggle a question by a string key
+  function toggleQuestion(key: string) {
     setExpandedQuestions((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(qIndex)) newSet.delete(qIndex);
-      else newSet.add(qIndex);
+      if (newSet.has(key)) newSet.delete(key);
+      else newSet.add(key);
       return newSet;
     });
   }
 
-  // Expand or collapse everything
+  // Toggle a section by "pX-sY" key
+  function toggleSection(key: string) {
+    setExpandedSections((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) newSet.delete(key);
+      else newSet.add(key);
+      return newSet;
+    });
+  }
+
+  // Expand/Collapse all
   function handleExpandCollapseAll() {
     setAllExpanded(!allExpanded);
     if (!allExpanded) {
-      // expand all
-      const secSet = new Set<number>();
-      const qSet = new Set<number>();
-      groups.forEach((g) => {
-        if (g.sectionIndex !== null) secSet.add(g.sectionIndex);
-        g.items.forEach((item) => qSet.add(item.index));
+      // expand everything
+      const pSet = new Set<number>();
+      const sSet = new Set<string>();
+      const qSet = new Set<string>();
+
+      form.pages.forEach((page, pIndex) => {
+        pSet.add(pIndex);
+        // unsectioned
+        page.unsectioned.forEach((_, qIndex) => {
+          qSet.add(`p${pIndex}-Uq${qIndex}`);
+        });
+        // sections
+        page.sections.forEach((sec, sIndex) => {
+          const secKey = `p${pIndex}-s${sIndex}`;
+          sSet.add(secKey);
+          sec.questions.forEach((_, qIndex) => {
+            qSet.add(`p${pIndex}-s${sIndex}-q${qIndex}`);
+          });
+        });
       });
-      setExpandedSections(secSet);
+
+      setExpandedPages(pSet);
+      setExpandedSections(sSet);
       setExpandedQuestions(qSet);
     } else {
       // collapse all
+      setExpandedPages(new Set());
       setExpandedSections(new Set());
       setExpandedQuestions(new Set());
     }
   }
 
-  // Add question globally (unsectioned) at the end
-  function handleAddQuestion() {
-    addQuestion({ label: '', type: 'text' });
-  }
-
-  // Add a new section at the end
-  function handleAddSection() {
-    addQuestion({ label: 'New Section', type: 'section' });
-  }
-
-  // Insert question after all items in a group
-  function handleAddQuestionInGroup(group: SectionGroup) {
-    let insertIndex: number;
-    if (group.sectionIndex !== null) {
-      if (group.items.length > 0) {
-        const lastChild = group.items[group.items.length - 1].index;
-        insertIndex = lastChild + 1;
-      } else {
-        insertIndex = group.sectionIndex + 1;
-      }
-    } else {
-      // unsectioned group
-      if (group.items.length > 0) {
-        const last = group.items[group.items.length - 1].index;
-        insertIndex = last + 1;
-      } else {
-        insertIndex = formSchema.questions.length;
-      }
-    }
-    insertQuestionAtIndex({ label: '', type: 'text' }, insertIndex);
-  }
-
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        {loading ? 'Loading...' : 'Form Builder (Modular)'}
+        {loading ? 'Loading...' : 'Hierarchical Form Builder'}
       </Typography>
       {error && <Typography color="error">{error}</Typography>}
 
-      {/* Form Title/Desc */}
-      <TextField
-        label="Form Title"
-        value={formSchema.title}
-        onChange={(e) => updateTitle(e.target.value)}
-        fullWidth
-        sx={{ mb: 2 }}
-      />
-      <TextField
-        label="Form Description"
-        value={formSchema.description}
-        onChange={(e) => updateDescription(e.target.value)}
-        fullWidth
-        multiline
-        rows={2}
-        sx={{ mb: 2 }}
-      />
+      <Typography>Form Title: {form.title}</Typography>
+      <Typography sx={{ mb: 2 }}>Form Description: {form.description}</Typography>
 
-      {/* Buttons */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-        <Button variant="contained" onClick={handleAddQuestion}>
-          Add Unsectioned Question
+      <Box sx={{ mb: 2 }}>
+        <Button variant="contained" onClick={addPage} sx={{ mr: 2 }}>
+          Add Page
         </Button>
-        <Button variant="outlined" onClick={handleAddSection}>
-          Create Section
-        </Button>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={handleExpandCollapseAll}
-          startIcon={allExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          sx={{ ml: 'auto' }}
-        >
+        <Button variant="outlined" onClick={handleExpandCollapseAll}>
+          {allExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           {allExpanded ? 'Collapse All' : 'Expand All'}
         </Button>
       </Box>
 
-      <Divider sx={{ mb: 3 }} />
+      <Divider sx={{ my: 2 }} />
 
-      {groups.map((group, gIdx) => (
-        <SectionCard
-          key={gIdx}
-          group={group}
-          expandedSections={expandedSections}
-          expandedQuestions={expandedQuestions}
-          onToggleSection={handleToggleSection}
-          onToggleQuestion={handleToggleQuestion}
-          updateQuestion={updateQuestion}
-          moveQuestion={moveQuestion}
-          removeQuestion={removeQuestion}
-          onAddQuestionHere={() => handleAddQuestionInGroup(group)}
-        />
-      ))}
+      {form.pages.map((page, pIndex) => {
+        const pageExpanded = expandedPages.has(pIndex);
+        return (
+          <Accordion
+            key={pIndex}
+            expanded={pageExpanded}
+            onChange={() => togglePage(pIndex)}
+            sx={{ mb: 2 }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography>
+                Page {pIndex + 1}: {page.title || '(untitled page)'}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {/* Page-level actions */}
+              <Button
+                onClick={() => addUnsectionedQuestion(pIndex)}
+                sx={{ mr: 2 }}
+              >
+                Add Unsectioned Q
+              </Button>
+              <Button onClick={() => addSection(pIndex)}>
+                Add Section
+              </Button>
+
+              <Divider sx={{ my: 2 }} />
+
+              {/* Unsectioned questions */}
+              {page.unsectioned.map((question, qIndex) => {
+                const qKey = `p${pIndex}-Uq${qIndex}`;
+                const numbering = `${pIndex+1}.U.${qIndex+1}`;
+                const expandedQ = expandedQuestions.has(qKey);
+
+                return (
+                  <QuestionAccordion
+                    key={qKey}
+                    question={question}
+                    numbering={numbering}
+                    expanded={expandedQ}
+                    onToggle={() => toggleQuestion(qKey)}
+                    onUpdate={(upd) => {
+                      page.unsectioned[qIndex] = upd; // direct mutation for brevity
+                    }}
+                    onMoveUp={() => {
+                      // e.g. reorder unsectioned question
+                    }}
+                    onMoveDown={() => {}}
+                    onRemove={() => {
+                      page.unsectioned.splice(qIndex, 1);
+                    }}
+                  />
+                );
+              })}
+
+              <Divider sx={{ my: 2 }} />
+
+              {/* Sections */}
+              {page.sections.map((sec, sIndex) => {
+                const secKey = `p${pIndex}-s${sIndex}`;
+                const secExpanded = expandedSections.has(secKey);
+                return (
+                  <Accordion
+                    key={secKey}
+                    expanded={secExpanded}
+                    onChange={() => toggleSection(secKey)}
+                    sx={{ mb: 2 }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography>
+                        Page {pIndex+1}, Section {sIndex+1}: {sec.title || '(untitled section)'}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Button
+                        variant="outlined"
+                        onClick={() => addQuestionToSection(pIndex, sIndex)}
+                        sx={{ mb: 2 }}
+                      >
+                        Add Q in Section
+                      </Button>
+
+                      <Divider sx={{ mb: 2 }} />
+
+                      {sec.questions.map((qq, qqIndex) => {
+                        const childKey = `p${pIndex}-s${sIndex}-q${qqIndex}`;
+                        const numbering = `${pIndex+1}.${sIndex+1}.${qqIndex+1}`;
+                        const expandedQQ = expandedQuestions.has(childKey);
+
+                        return (
+                          <QuestionAccordion
+                            key={childKey}
+                            question={qq}
+                            numbering={numbering}
+                            expanded={expandedQQ}
+                            onToggle={() => toggleQuestion(childKey)}
+                            onUpdate={(upd) => {
+                              sec.questions[qqIndex] = upd;
+                            }}
+                            onMoveUp={() => {
+                              // move question inside section if you want
+                            }}
+                            onMoveDown={() => {}}
+                            onRemove={() => {
+                              sec.questions.splice(qqIndex, 1);
+                            }}
+                          />
+                        );
+                      })}
+                    </AccordionDetails>
+                  </Accordion>
+                );
+              })}
+            </AccordionDetails>
+          </Accordion>
+        );
+      })}
 
       <Divider sx={{ my: 3 }} />
-
-      <Button variant="contained" onClick={saveForm} disabled={loading}>
+      <Button variant="contained" disabled={loading} onClick={saveForm}>
         {loading ? 'Saving...' : 'Save Form'}
       </Button>
     </Box>

@@ -21,15 +21,17 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Question, AdvancedQuestionType, SkipLogicCondition } from '../../types/formTypes';
+
+import { Question, SkipLogicCondition, AdvancedQuestionType } from '../../types/formTypes';
 import { SkipLogicFields } from './SkipLogicFields';
 
 interface QuestionAccordionProps {
   question: Question;
-  index: number;
-  expanded: boolean; // is this question's accordion expanded
-  onToggle: () => void; // toggles expansion
-  onUpdate: (q: Question) => void;
+  numbering: string;   // e.g. "1.U.2" or "1.2.3"
+  expanded: boolean;
+  onToggle: () => void;
+
+  onUpdate: (updated: Question) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
@@ -37,7 +39,7 @@ interface QuestionAccordionProps {
 
 export function QuestionAccordion({
   question,
-  index,
+  numbering,
   expanded,
   onToggle,
   onUpdate,
@@ -45,8 +47,7 @@ export function QuestionAccordion({
   onMoveDown,
   onRemove,
 }: QuestionAccordionProps) {
-  // default skip logic if undefined
-  const skip: SkipLogicCondition = question.skipLogic || {
+  const skip: SkipLogicCondition = question.skipLogic ?? {
     referenceQuestionIndex: 0,
     operator: '==',
     value: '',
@@ -54,10 +55,10 @@ export function QuestionAccordion({
   };
 
   return (
-    <Accordion expanded={expanded} onChange={onToggle} sx={{ mb: 2 }}>
+    <Accordion expanded={expanded} onChange={onToggle}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Typography>
-          Q{index + 1} - {question.label || '(untitled)'}
+          {numbering} - {question.label || '(untitled)'}
         </Typography>
       </AccordionSummary>
       <AccordionDetails>
@@ -70,18 +71,6 @@ export function QuestionAccordion({
           sx={{ mb: 2 }}
         />
 
-        <TextField
-          type="number"
-          label="Which page?"
-          value={question.pageNumber ?? 1}
-          onChange={(e) => {
-            const pg = parseInt(e.target.value || '1', 10);
-            onUpdate({ ...question, pageNumber: pg });
-          }}
-          fullWidth
-          sx={{ mb: 2 }}
-        />
-
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel>Question Type</InputLabel>
           <Select
@@ -90,7 +79,8 @@ export function QuestionAccordion({
             onChange={(e) =>
               onUpdate({
                 ...question,
-                type: e.target.value as AdvancedQuestionType,
+                // disallow 'section' if needed
+                type: e.target.value === 'section' ? 'text' : (e.target.value as AdvancedQuestionType),
               })
             }
           >
@@ -99,7 +89,6 @@ export function QuestionAccordion({
             <MenuItem value="checkbox">Checkbox</MenuItem>
             <MenuItem value="select">Dropdown</MenuItem>
             <MenuItem value="rating">Rating (1-5)</MenuItem>
-            {/* etc... */}
           </Select>
         </FormControl>
 
@@ -107,9 +96,7 @@ export function QuestionAccordion({
           control={
             <Checkbox
               checked={question.required}
-              onChange={(e) =>
-                onUpdate({ ...question, required: e.target.checked })
-              }
+              onChange={(e) => onUpdate({ ...question, required: e.target.checked })}
             />
           }
           label="Required?"
@@ -117,10 +104,7 @@ export function QuestionAccordion({
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Skip Logic */}
-        <Typography variant="subtitle2" gutterBottom>
-          Skip Logic
-        </Typography>
+        <Typography variant="subtitle2">Skip Logic</Typography>
         <SkipLogicFields
           skip={skip}
           onChange={(updated) => onUpdate({ ...question, skipLogic: updated })}
@@ -128,7 +112,6 @@ export function QuestionAccordion({
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Move / Remove question */}
         <IconButton onClick={onMoveUp}>
           <ArrowUpwardIcon />
         </IconButton>

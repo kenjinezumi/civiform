@@ -46,5 +46,6 @@ export async function loadFormFromServer(formId: string): Promise<FormSchema> {
         },
       },
     ],
+    pages: [],
   });
 }

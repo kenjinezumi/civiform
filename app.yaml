@@ -1,9 +1,12 @@
-runtime: nodejs16
+runtime: nodejs20
 env: standard
 
-entrypoint: npm run start
+handlers:
+  - url: /(.*)
+    static_files: build/\1
+    upload: build/(.*)
+    require_matching_file: false
 
-instance_class: F1  # optional, choose an instance class (F1 is the smallest)
-automatic_scaling:
-  min_instances: 1
-  max_instances: 2
+  - url: /.*
+    static_files: build/index.html
+    upload: build/index.html

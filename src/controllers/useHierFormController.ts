@@ -1,116 +1,122 @@
 /**
  * src/controllers/useHierFormController.ts
+ *
+ * A custom hook that manages top-level FormSchema state:
+ * - addPage, addSection, addUnsectionedQuestion, addQuestionToSection
+ * - plus a saveForm stub
+ * - returns { form, setForm, loading, error, ... } to consumer.
  */
 import { useState } from 'react';
 import { FormSchema, Page, Question } from '../types/formTypes';
 
-// Example shape, update accordingly
 export function useHierFormController() {
-  // Initialize a default form for demonstration
   const [form, setForm] = useState<FormSchema>({
-    title: 'Untitled Form',
-    description: 'Description goes here',
-    pages: [],
+    title: 'My Form',
+    description: 'A multi-page form',
+    pages: [
+      {
+        title: 'Page 1',
+        description: '',
+        unsectioned: [],
+        sections: [],
+      },
+    ],
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string|null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Example: add a new, empty page
+  // Example: add a new page at the end
   function addPage() {
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      newPages.push({
-        title: '',
+    setForm((prev) => {
+      const newPageCount = prev.pages.length + 1;
+      const newPage: Page = {
+        title: `Page ${newPageCount}`,
         description: '',
         unsectioned: [],
-        sections: []
-      });
-      return {
-        ...prev,
-        pages: newPages
+        sections: [],
       };
+      return { ...prev, pages: [...prev.pages, newPage] };
     });
   }
 
+  // Add a new section to an existing page
   function addSection(pageIndex: number) {
-    setForm((prev: FormSchema) => {
+    setForm((prev) => {
       const newPages = [...prev.pages];
       const pageCopy = { ...newPages[pageIndex] };
       pageCopy.sections = [
         ...pageCopy.sections,
-        { title: '', questions: [] }
+        { title: 'New Section', questions: [] },
       ];
       newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
   }
 
+  // Add a new unsectioned question to a page
   function addUnsectionedQuestion(pageIndex: number) {
-    setForm((prev: FormSchema) => {
+    setForm((prev) => {
       const newPages = [...prev.pages];
       const pageCopy = { ...newPages[pageIndex] };
-      pageCopy.unsectioned = [
-        ...pageCopy.unsectioned,
-        {
-          label: '',
-          type: 'text',
-          required: false,
-          placeholder: '',
-          helpText: '',
-          choices: []
-        }
-      ];
+
+      const defaultQ: Question = {
+        label: '',
+        type: 'text',
+        required: false,
+        placeholder: '',
+        helpText: '',
+        choices: [],
+      };
+      pageCopy.unsectioned = [...pageCopy.unsectioned, defaultQ];
+
       newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
   }
 
+  // Add a child question to a specific section
   function addQuestionToSection(pageIndex: number, sectionIndex: number) {
-    setForm((prev: FormSchema) => {
+    setForm((prev) => {
       const newPages = [...prev.pages];
       const pageCopy = { ...newPages[pageIndex] };
       const sectionsCopy = [...pageCopy.sections];
-      const sectionCopy = { ...sectionsCopy[sectionIndex] };
-
-      sectionCopy.questions = [
-        ...sectionCopy.questions,
-        {
-          label: '',
-          type: 'text',
-          required: false,
-          placeholder: '',
-          helpText: '',
-          choices: []
-        }
-      ];
-
-      sectionsCopy[sectionIndex] = sectionCopy;
+  
+      const defaultQ: Question = {
+        label: '',
+        type: 'text',
+        required: false,
+        placeholder: '',
+        helpText: '',
+        choices: [],
+      };
+  
+      const secObj = { ...sectionsCopy[sectionIndex] };
+      secObj.questions = [...secObj.questions, defaultQ];
+      sectionsCopy[sectionIndex] = secObj;
       pageCopy.sections = sectionsCopy;
       newPages[pageIndex] = pageCopy;
+  
       return { ...prev, pages: newPages };
     });
   }
-
+  
+  // A stub for saving the form
   async function saveForm() {
-    setLoading(true);
     try {
-      // Example: do an API call, e.g. axios.post(...)
-      console.log('Saving form', form);
-      // ...
-      // On success, maybe setError(null)
-      setError(null);
-    } catch (err) {
-      // handle or display error
-      setError('Save failed');
+      setLoading(true);
+      console.log('Saving form data:', form);
+      // real API call, e.g. await axios.post(...)
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-  // Return everything you need, including setForm
   return {
     form,
-    setForm, // <-- CRUCIAL
+    setForm, // so the consumer can do advanced reorder / remove logic
     loading,
     error,
     addPage,

@@ -1,6 +1,3 @@
-/**
- * src/components/admin/QuestionAccordion.tsx
- */
 import React from 'react';
 import {
   Accordion,
@@ -15,7 +12,7 @@ import {
   FormControlLabel,
   Checkbox,
   IconButton,
-  Divider
+  Divider,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -26,14 +23,25 @@ import { Question, SkipLogicCondition, AdvancedQuestionType } from '../../types/
 import { SkipLogicFields } from './SkipLogicFields';
 
 interface QuestionAccordionProps {
+  /** The question data we are editing. */
   question: Question;
-  numbering: string; // e.g. "1.U.2" or "1.2.3"
+  /** A string like "2.1.3" to show the question number. */
+  numbering: string;
+  /** Whether this accordion is expanded (controlled by parent). */
   expanded: boolean;
+  /**
+   * Called when the user clicks on the accordion header,
+   * so the parent can toggle the open/closed state.
+   */
   onToggle: () => void;
 
+  /** Called when user changes question fields. */
   onUpdate: (updated: Question) => void;
+  /** Move question up in parent's array. */
   onMoveUp: () => void;
+  /** Move question down in parent's array. */
   onMoveDown: () => void;
+  /** Remove question from parent's array. */
   onRemove: () => void;
 }
 
@@ -45,9 +53,9 @@ export function QuestionAccordion({
   onUpdate,
   onMoveUp,
   onMoveDown,
-  onRemove
+  onRemove,
 }: QuestionAccordionProps) {
-  // Provide a default skipLogic if none
+  // Provide a default skip logic if the question has none
   const skip: SkipLogicCondition = question.skipLogic ?? {
     referenceQuestionIndex: 0,
     operator: '==',
@@ -62,8 +70,8 @@ export function QuestionAccordion({
           {numbering} - {question.label || '(untitled)'}
         </Typography>
       </AccordionSummary>
+
       <AccordionDetails>
-        {/* Basic fields */}
         <TextField
           label="Question Label"
           value={question.label}
@@ -80,7 +88,7 @@ export function QuestionAccordion({
             onChange={(e) =>
               onUpdate({
                 ...question,
-                // Disallow 'section' if needed
+                // Disallow 'section' if you like
                 type: e.target.value === 'section'
                   ? 'text'
                   : (e.target.value as AdvancedQuestionType),
@@ -91,7 +99,8 @@ export function QuestionAccordion({
             <MenuItem value="radio">Radio</MenuItem>
             <MenuItem value="checkbox">Checkbox</MenuItem>
             <MenuItem value="select">Dropdown</MenuItem>
-            <MenuItem value="rating">Rating (1-5)</MenuItem>
+            <MenuItem value="rating">Rating</MenuItem>
+            {/* etc... */}
           </Select>
         </FormControl>
 
@@ -99,9 +108,7 @@ export function QuestionAccordion({
           control={
             <Checkbox
               checked={question.required}
-              onChange={(e) =>
-                onUpdate({ ...question, required: e.target.checked })
-              }
+              onChange={(e) => onUpdate({ ...question, required: e.target.checked })}
             />
           }
           label="Required?"
@@ -117,10 +124,10 @@ export function QuestionAccordion({
 
         <Divider sx={{ my: 2 }} />
 
-        <IconButton onClick={onMoveUp}>
+        <IconButton onClick={onMoveUp} sx={{ mr: 1 }}>
           <ArrowUpwardIcon />
         </IconButton>
-        <IconButton onClick={onMoveDown}>
+        <IconButton onClick={onMoveDown} sx={{ mr: 1 }}>
           <ArrowDownwardIcon />
         </IconButton>
         <IconButton onClick={onRemove}>

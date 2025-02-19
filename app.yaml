@@ -2,11 +2,14 @@ runtime: nodejs20
 env: standard
 
 handlers:
-  - url: /(.*)
+  - url: /(.*\.(js|css|png|jpg|gif|ico|woff2?|eot|ttf|svg))
     static_files: build/\1
-    upload: build/(.*)
-    require_matching_file: false
+    upload: build/(.*\.(js|css|png|jpg|gif|ico|woff2?|eot|ttf|svg))
+    require_matching_file: true
+    expiration: "30d"
 
   - url: /.*
     static_files: build/index.html
     upload: build/index.html
+    mime_type: text/html
+

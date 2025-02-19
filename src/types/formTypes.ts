@@ -1,6 +1,10 @@
 /**
  * src/types/formTypes.ts
+ *
+ * Defines the hierarchical model:
+ * Form -> pages[] -> unsectioned[] + sections[] -> questions[]
  */
+
 export type OperatorType = '==' | '!=' | 'contains' | 'not-contains';
 export type ActionType = 'show' | 'hide';
 

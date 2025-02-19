@@ -1,6 +1,3 @@
-/**
- * src/components/admin/SectionAccordion.tsx
- */
 import React from 'react';
 import {
   Accordion,
@@ -10,7 +7,8 @@ import {
   TextField,
   IconButton,
   Box,
-  Divider
+  Button,
+  Divider,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -20,25 +18,36 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { Section, Question } from '../../types/formTypes';
 import { QuestionAccordion } from './QuestionAccordion';
 
-interface Props {
+interface SectionAccordionProps {
+  /** Which section object to display. */
   section: Section;
+  /** For numbering, like page 1, section 2 => "1.2". */
   pageIndex: number;
   sectionIndex: number;
+  /** Whether this accordion is expanded (controlled by parent). */
   expanded: boolean;
+  /**
+   * Called when user clicks the accordion header,
+   * so parent can toggle expansion state.
+   */
   onToggle: () => void;
 
+  // Reorder / remove the entire section
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
 
-  // Title update
-  onUpdateTitle: (newTitle: string) => void;
+  // Add a question inside this section
+  onAddQuestion: () => void;
 
-  // Child questions
-  onUpdateQuestion: (qIndex: number, updated: Question) => void;
+  // For reordering / removing child questions
   onMoveQuestionUp: (qIndex: number) => void;
   onMoveQuestionDown: (qIndex: number) => void;
   onRemoveQuestion: (qIndex: number) => void;
+  onUpdateQuestion: (qIndex: number, updated: Question) => void;
+
+  // Optional callback to immutably set the section title
+  onUpdateTitle?: (newTitle: string) => void;
 }
 
 export function SectionAccordion({
@@ -50,31 +59,41 @@ export function SectionAccordion({
   onMoveUp,
   onMoveDown,
   onRemove,
-  onUpdateTitle,
-  onUpdateQuestion,
+  onAddQuestion,
   onMoveQuestionUp,
   onMoveQuestionDown,
-  onRemoveQuestion
-}: Props) {
-  const sectionNumLabel = `${pageIndex + 1}.${sectionIndex + 1}`;
+  onRemoveQuestion,
+  onUpdateQuestion,
+  onUpdateTitle,
+}: SectionAccordionProps) {
+  const sectionNum = `${pageIndex + 1}.${sectionIndex + 1}`;
 
   return (
     <Accordion expanded={expanded} onChange={onToggle} sx={{ mb: 2 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Typography>
-          {sectionNumLabel} - {section.title || '(untitled)'}
+          Section {sectionNum}: {section.title || '(untitled)'}
         </Typography>
       </AccordionSummary>
+
       <AccordionDetails>
-        {/* Title field for the section */}
         <TextField
           label="Section Title"
           value={section.title}
-          onChange={(e) => onUpdateTitle(e.target.value)}
+          onChange={(e) => {
+            if (onUpdateTitle) {
+              // Immutably update in parent
+              onUpdateTitle(e.target.value);
+            } else {
+              // Directly mutating is discouraged, but fallback if no parent callback
+              section.title = e.target.value;
+            }
+          }}
           fullWidth
           sx={{ mb: 2 }}
         />
 
+        {/* Section-level reorder/delete controls */}
         <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
           <IconButton onClick={onMoveUp}>
             <ArrowUpwardIcon />
@@ -87,19 +106,29 @@ export function SectionAccordion({
           </IconButton>
         </Box>
 
+        {/* Add question to this section */}
+        <Button variant="outlined" onClick={onAddQuestion} sx={{ mb: 2 }}>
+          Add Q in Section
+        </Button>
+
         <Divider sx={{ my: 2 }} />
 
-        {/* Child questions */}
+        {/* Render each question */}
         {section.questions.map((question, qIndex) => {
-          const numbering = `${sectionNumLabel}.${qIndex + 1}`;
+          const numbering = `${sectionNum}.${qIndex + 1}`;
+          // If you want each question expanded individually from the parent:
+          //   pass a boolean `expanded` to QuestionAccordion here
+          //   and pass `onToggle={() => ...}` too, referencing parent's state
+          //
+          // For now, we just keep them collapsed by default, or pass a separate logic
           return (
             <QuestionAccordion
               key={qIndex}
               question={question}
               numbering={numbering}
-              expanded={false} // or track expansions at a higher level
+              expanded={false}
               onToggle={() => {}}
-              onUpdate={(updated) => onUpdateQuestion(qIndex, updated)}
+              onUpdate={(upd) => onUpdateQuestion(qIndex, upd)}
               onMoveUp={() => onMoveQuestionUp(qIndex)}
               onMoveDown={() => onMoveQuestionDown(qIndex)}
               onRemove={() => onRemoveQuestion(qIndex)}

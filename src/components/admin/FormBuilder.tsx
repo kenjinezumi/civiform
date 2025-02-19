@@ -1,5 +1,8 @@
 /**
  * src/components/admin/FormBuilder.tsx
+ *
+ * Full "patch" so you can remove and reorder everything,
+ * and reference removeUnsectionedQuestion in <QuestionAccordion onRemove={...} />.
  */
 import React, { useState } from 'react';
 import {
@@ -25,7 +28,7 @@ import { QuestionAccordion } from './QuestionAccordion';
 import { SectionAccordion } from './SectionAccordion';
 import { FormSchema, Question } from '../../types/formTypes';
 
-/** Helper to swap array items */
+/** Helper to swap items in an array */
 function swap<T>(arr: T[], i: number, j: number) {
   const temp = arr[i];
   arr[i] = arr[j];
@@ -45,13 +48,15 @@ export default function FormBuilder() {
     saveForm,
   } = useHierFormController();
 
-  // Track expansions
+  // track expansions
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
-  // ------------------ REORDER PAGES ------------------ //
+  // -----------------------------------------------------------------
+  // 1) PAGES: remove, reorder
+  // -----------------------------------------------------------------
   function removePage(pageIndex: number) {
     setForm((prev: FormSchema) => {
       const newPages = [...prev.pages];
@@ -59,7 +64,6 @@ export default function FormBuilder() {
       return { ...prev, pages: newPages };
     });
   }
-
   function movePageUp(pageIndex: number) {
     if (pageIndex <= 0) return;
     setForm((prev: FormSchema) => {
@@ -69,180 +73,199 @@ export default function FormBuilder() {
     });
   }
   function movePageDown(pageIndex: number) {
-    if (pageIndex >= form.pages.length - 1) return;
     setForm((prev: FormSchema) => {
+      if (pageIndex >= prev.pages.length - 1) return prev;
       const newPages = [...prev.pages];
       swap(newPages, pageIndex, pageIndex + 1);
       return { ...prev, pages: newPages };
     });
   }
 
-  // ------------------ REORDER Unsectioned Questions ------------------ //
-  function moveUnsectionedQuestionUp(pageIndex: number, qIndex: number) {
-    if (qIndex <= 0) return;
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const unsecCopy = [...pageCopy.unsectioned];
-      swap(unsecCopy, qIndex, qIndex - 1);
-      pageCopy.unsectioned = unsecCopy;
-      newPages[pageIndex] = pageCopy;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function moveUnsectionedQuestionDown(pageIndex: number, qIndex: number) {
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const unsecCopy = [...pageCopy.unsectioned];
-      if (qIndex >= unsecCopy.length - 1) return prev;
-      swap(unsecCopy, qIndex, qIndex + 1);
-      pageCopy.unsectioned = unsecCopy;
-      newPages[pageIndex] = pageCopy;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  // ------------------ REORDER Sections ------------------ //
-  function moveSectionUp(pageIndex: number, sectionIndex: number) {
-    if (sectionIndex <= 0) return;
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const secCopy = [...pageCopy.sections];
-      swap(secCopy, sectionIndex, sectionIndex - 1);
-      pageCopy.sections = secCopy;
-      newPages[pageIndex] = pageCopy;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function moveSectionDown(pageIndex: number, sectionIndex: number) {
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const secCopy = [...pageCopy.sections];
-      if (sectionIndex >= secCopy.length - 1) return prev;
-      swap(secCopy, sectionIndex, sectionIndex + 1);
-      pageCopy.sections = secCopy;
-      newPages[pageIndex] = pageCopy;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  // ------------------ REORDER Section Questions ------------------ //
-  function moveSectionQuestionUp(pageIndex: number, sectionIndex: number, qIndex: number) {
-    if (qIndex <= 0) return;
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const secCopy = [...pageCopy.sections];
-      const secObj = { ...secCopy[sectionIndex] };
-      const qArr = [...secObj.questions];
-      swap(qArr, qIndex, qIndex - 1);
-      secObj.questions = qArr;
-      secCopy[sectionIndex] = secObj;
-      pageCopy.sections = secCopy;
-      newPages[pageIndex] = pageCopy;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function moveSectionQuestionDown(pageIndex: number, sectionIndex: number, qIndex: number) {
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const secCopy = [...pageCopy.sections];
-      const secObj = { ...secCopy[sectionIndex] };
-      const qArr = [...secObj.questions];
-      if (qIndex >= qArr.length - 1) return prev;
-      swap(qArr, qIndex, qIndex + 1);
-      secObj.questions = qArr;
-      secCopy[sectionIndex] = secObj;
-      pageCopy.sections = secCopy;
-      newPages[pageIndex] = pageCopy;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  // ------------------ UPDATE / REMOVE Items ------------------ //
-
+  // -----------------------------------------------------------------
+  // 2) UNSECTIONED QUESTIONS: remove, reorder
+  // -----------------------------------------------------------------
   function removeUnsectionedQuestion(pageIndex: number, qIndex: number) {
     setForm((prev: FormSchema) => {
       const newPages = [...prev.pages];
       const pageCopy = { ...newPages[pageIndex] };
       const unsecCopy = [...pageCopy.unsectioned];
+      // remove the question from array
       unsecCopy.splice(qIndex, 1);
       pageCopy.unsectioned = unsecCopy;
       newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
   }
+  function moveUnsectionedQuestionUp(pageIndex: number, qIndex: number) {
+    if (qIndex <= 0) return;
+    setForm((prev: FormSchema) => {
+      const newPages = [...prev.pages];
+      const pageCopy = { ...newPages[pageIndex] };
+      const unsec = [...pageCopy.unsectioned];
+      swap(unsec, qIndex, qIndex - 1);
+      pageCopy.unsectioned = unsec;
+      newPages[pageIndex] = pageCopy;
+      return { ...prev, pages: newPages };
+    });
+  }
+  function moveUnsectionedQuestionDown(pageIndex: number, qIndex: number) {
+    setForm((prev: FormSchema) => {
+      const newPages = [...prev.pages];
+      const pageCopy = { ...newPages[pageIndex] };
+      const unsec = [...pageCopy.unsectioned];
+      if (qIndex >= unsec.length - 1) return prev;
+      swap(unsec, qIndex, qIndex + 1);
+      pageCopy.unsectioned = unsec;
+      newPages[pageIndex] = pageCopy;
+      return { ...prev, pages: newPages };
+    });
+  }
 
+  // -----------------------------------------------------------------
+  // 3) SECTIONS: remove, reorder, update
+  // -----------------------------------------------------------------
   function removeSection(pageIndex: number, sectionIndex: number) {
     setForm((prev: FormSchema) => {
       const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const secCopy = [...pageCopy.sections];
-      secCopy.splice(sectionIndex, 1);
-      pageCopy.sections = secCopy;
-      newPages[pageIndex] = pageCopy;
+      const pageC = { ...newPages[pageIndex] };
+      const secs = [...pageC.sections];
+      secs.splice(sectionIndex, 1);
+      pageC.sections = secs;
+      newPages[pageIndex] = pageC;
+      return { ...prev, pages: newPages };
+    });
+  }
+  function moveSectionUp(pageIndex: number, sectionIndex: number) {
+    if (sectionIndex <= 0) return;
+    setForm((prev: FormSchema) => {
+      const newPages = [...prev.pages];
+      const pageC = { ...newPages[pageIndex] };
+      const secs = [...pageC.sections];
+      swap(secs, sectionIndex, sectionIndex - 1);
+      pageC.sections = secs;
+      newPages[pageIndex] = pageC;
+      return { ...prev, pages: newPages };
+    });
+  }
+  function moveSectionDown(pageIndex: number, sectionIndex: number) {
+    setForm((prev: FormSchema) => {
+      const newPages = [...prev.pages];
+      const pageC = { ...newPages[pageIndex] };
+      const secs = [...pageC.sections];
+      if (sectionIndex >= secs.length - 1) return prev;
+      swap(secs, sectionIndex, sectionIndex + 1);
+      pageC.sections = secs;
+      newPages[pageIndex] = pageC;
       return { ...prev, pages: newPages };
     });
   }
 
+  // NEW: Update section title immutably
+  function updateSectionTitle(pageIndex: number, sectionIndex: number, newTitle: string) {
+    setForm((prev: FormSchema) => {
+      const newPages = [...prev.pages];
+      const pageC = { ...newPages[pageIndex] };
+      const secs = [...pageC.sections];
+      const secCopy = { ...secs[sectionIndex] };
+      secCopy.title = newTitle;
+      secs[sectionIndex] = secCopy;
+      pageC.sections = secs;
+      newPages[pageIndex] = pageC;
+      return { ...prev, pages: newPages };
+    });
+  }
+
+  // -----------------------------------------------------------------
+  // 4) SECTION QUESTIONS: remove, reorder
+  // -----------------------------------------------------------------
   function removeSectionQuestion(pageIndex: number, sectionIndex: number, qIndex: number) {
     setForm((prev: FormSchema) => {
       const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const secCopy = [...pageCopy.sections];
-      const secObj = { ...secCopy[sectionIndex] };
-      const qArr = [...secObj.questions];
-      qArr.splice(qIndex, 1);
-      secObj.questions = qArr;
-      secCopy[sectionIndex] = secObj;
-      pageCopy.sections = secCopy;
-      newPages[pageIndex] = pageCopy;
+      const pageC = { ...newPages[pageIndex] };
+      const secs = [...pageC.sections];
+      const secObj = { ...secs[sectionIndex] };
+      const qs = [...secObj.questions];
+      qs.splice(qIndex, 1);
+      secObj.questions = qs;
+      secs[sectionIndex] = secObj;
+      pageC.sections = secs;
+      newPages[pageIndex] = pageC;
+      return { ...prev, pages: newPages };
+    });
+  }
+  function moveSectionQuestionUp(pageIndex: number, sectionIndex: number, qIndex: number) {
+    if (qIndex <= 0) return;
+    setForm((prev: FormSchema) => {
+      const newPages = [...prev.pages];
+      const pageC = { ...newPages[pageIndex] };
+      const secs = [...pageC.sections];
+      const secObj = { ...secs[sectionIndex] };
+      const qs = [...secObj.questions];
+      swap(qs, qIndex, qIndex - 1);
+      secObj.questions = qs;
+      secs[sectionIndex] = secObj;
+      pageC.sections = secs;
+      newPages[pageIndex] = pageC;
+      return { ...prev, pages: newPages };
+    });
+  }
+  function moveSectionQuestionDown(pageIndex: number, sectionIndex: number, qIndex: number) {
+    setForm((prev: FormSchema) => {
+      const newPages = [...prev.pages];
+      const pageC = { ...newPages[pageIndex] };
+      const secs = [...pageC.sections];
+      const secObj = { ...secs[sectionIndex] };
+      const qs = [...secObj.questions];
+      if (qIndex >= qs.length - 1) return prev;
+      swap(qs, qIndex, qIndex + 1);
+      secObj.questions = qs;
+      secs[sectionIndex] = secObj;
+      pageC.sections = secs;
+      newPages[pageIndex] = pageC;
       return { ...prev, pages: newPages };
     });
   }
 
-  // For updating text fields
+  // -----------------------------------------------------------------
+  // 5) PAGE TITLE / DESCRIPTION
+  // -----------------------------------------------------------------
   function updatePageTitle(pageIndex: number, newTitle: string) {
     setForm((prev: FormSchema) => {
       const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      pageCopy.title = newTitle;
-      newPages[pageIndex] = pageCopy;
+      const pCopy = { ...newPages[pageIndex] };
+      pCopy.title = newTitle;
+      newPages[pageIndex] = pCopy;
       return { ...prev, pages: newPages };
     });
   }
-
-  // Storing TipTap HTML in page.description
   function updatePageDescription(pageIndex: number, newDesc: string) {
     setForm((prev: FormSchema) => {
       const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      pageCopy.description = newDesc;
-      newPages[pageIndex] = pageCopy;
+      const pCopy = { ...newPages[pageIndex] };
+      pCopy.description = newDesc;
+      newPages[pageIndex] = pCopy;
       return { ...prev, pages: newPages };
     });
   }
 
-  // Example for updating an unsectioned question
+  // -----------------------------------------------------------------
+  // 6) UNSECTIONED QUESTION UPDATE
+  // -----------------------------------------------------------------
   function updateUnsectionedQuestion(pageIndex: number, qIndex: number, updated: Question) {
     setForm((prev: FormSchema) => {
       const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const unsecCopy = [...pageCopy.unsectioned];
-      unsecCopy[qIndex] = updated;
-      pageCopy.unsectioned = unsecCopy;
-      newPages[pageIndex] = pageCopy;
+      const pCopy = { ...newPages[pageIndex] };
+      const unsec = [...pCopy.unsectioned];
+      unsec[qIndex] = updated;
+      pCopy.unsectioned = unsec;
+      newPages[pageIndex] = pCopy;
       return { ...prev, pages: newPages };
     });
   }
 
+  // -----------------------------------------------------------------
+  // 7) SECTION QUESTION UPDATE
+  // -----------------------------------------------------------------
   function updateSectionQuestion(
     pageIndex: number,
     sectionIndex: number,
@@ -251,60 +274,61 @@ export default function FormBuilder() {
   ) {
     setForm((prev: FormSchema) => {
       const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const secCopy = [...pageCopy.sections];
-      const secObj = { ...secCopy[sectionIndex] };
-      const questionsCopy = [...secObj.questions];
-      questionsCopy[qIndex] = updated;
-      secObj.questions = questionsCopy;
-      secCopy[sectionIndex] = secObj;
-      pageCopy.sections = secCopy;
-      newPages[pageIndex] = pageCopy;
+      const pageC = { ...newPages[pageIndex] };
+      const secs = [...pageC.sections];
+      const secObj = { ...secs[sectionIndex] };
+      const qs = [...secObj.questions];
+      qs[qIndex] = updated;
+      secObj.questions = qs;
+      secs[sectionIndex] = secObj;
+      pageC.sections = secs;
+      newPages[pageIndex] = pageC;
       return { ...prev, pages: newPages };
     });
   }
 
-  // ------------------ EXPANSION (Pages, Sections, Questions) ------------------ //
-
-  function togglePage(pIndex: number) {
+  // -----------------------------------------------------------------
+  // 8) EXPAND / COLLAPSE
+  // -----------------------------------------------------------------
+  const togglePage = (pIndex: number) => {
     setExpandedPages((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(pIndex)) newSet.delete(pIndex);
       else newSet.add(pIndex);
       return newSet;
     });
-  }
-
-  function toggleSection(key: string) {
+  };
+  const toggleSection = (secKey: string) => {
     setExpandedSections((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(key)) newSet.delete(key);
-      else newSet.add(key);
+      if (newSet.has(secKey)) newSet.delete(secKey);
+      else newSet.add(secKey);
       return newSet;
     });
-  }
-
-  function toggleQuestion(key: string) {
+  };
+  const toggleQuestion = (qKey: string) => {
     setExpandedQuestions((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(key)) newSet.delete(key);
-      else newSet.add(key);
+      if (newSet.has(qKey)) newSet.delete(qKey);
+      else newSet.add(qKey);
       return newSet;
     });
-  }
+  };
 
-  // Expand/Collapse All
   function handleExpandCollapseAll() {
     setAllExpanded(!allExpanded);
     if (!allExpanded) {
       const pSet = new Set<number>();
       const sSet = new Set<string>();
       const qSet = new Set<string>();
+
       form.pages.forEach((page, pIndex) => {
         pSet.add(pIndex);
+
         page.unsectioned.forEach((_, qIndex) => {
           qSet.add(`p${pIndex}-Uq${qIndex}`);
         });
+
         page.sections.forEach((sec, sIndex) => {
           const secKey = `p${pIndex}-s${sIndex}`;
           sSet.add(secKey);
@@ -313,6 +337,7 @@ export default function FormBuilder() {
           });
         });
       });
+
       setExpandedPages(pSet);
       setExpandedSections(sSet);
       setExpandedQuestions(qSet);
@@ -323,8 +348,9 @@ export default function FormBuilder() {
     }
   }
 
-  // ------------------ RENDER ------------------ //
-
+  // -----------------------------------------------------------------
+  // RENDER
+  // -----------------------------------------------------------------
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
@@ -347,6 +373,7 @@ export default function FormBuilder() {
 
       <Divider sx={{ my: 2 }} />
 
+      {/* RENDER EACH PAGE */}
       {form.pages.map((page, pIndex) => {
         const pageExpanded = expandedPages.has(pIndex);
         const pageKey = `page-${pIndex}`;
@@ -365,15 +392,17 @@ export default function FormBuilder() {
             </AccordionSummary>
 
             <AccordionDetails>
-              {/* Page Title */}
-              <Typography variant="subtitle2" sx={{ mt: 1 }}>Page Title:</Typography>
+              {/* PAGE TITLE */}
+              <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                Page Title:
+              </Typography>
               <input
+                style={{ marginBottom: '1rem', width: '100%' }}
                 value={page.title}
                 onChange={(e) => updatePageTitle(pIndex, e.target.value)}
-                style={{ marginBottom: '1rem', width: '100%' }}
               />
 
-              {/* Page Description (TipTap) */}
+              {/* PAGE DESCRIPTION (TIPTAP) */}
               <Typography variant="subtitle2" sx={{ mt: 1 }}>
                 Page Description (Rich Text):
               </Typography>
@@ -382,22 +411,20 @@ export default function FormBuilder() {
                 onChange={(val) => updatePageDescription(pIndex, val)}
               />
 
-              {/* Move Page Up/Down + Delete Page */}
-              <div style={{ marginBottom: '1rem' }}>
-                <IconButton onClick={() => movePageUp(pIndex)} sx={{ mr: 1 }}>
+              {/* Move / Delete Page */}
+              <Box sx={{ display: 'flex', gap: 1, my: 2 }}>
+                <IconButton onClick={() => movePageUp(pIndex)}>
                   <ArrowUpwardIcon />
                 </IconButton>
-                <IconButton onClick={() => movePageDown(pIndex)} sx={{ mr: 1 }}>
+                <IconButton onClick={() => movePageDown(pIndex)}>
                   <ArrowDownwardIcon />
                 </IconButton>
-
-                {/* Delete Page */}
                 <IconButton onClick={() => removePage(pIndex)}>
                   <DeleteIcon />
                 </IconButton>
-              </div>
+              </Box>
 
-              {/* Add unsectioned question or add section */}
+              {/* Add Unsectioned Question or Add Section */}
               <Button onClick={() => addUnsectionedQuestion(pIndex)} sx={{ mr: 2 }}>
                 Add Unsectioned Q
               </Button>
@@ -405,10 +432,10 @@ export default function FormBuilder() {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* Unsectioned Questions */}
+              {/* UNSECTIONED QUESTIONS */}
               {page.unsectioned.map((question, qIndex) => {
-                const numbering = `${pIndex + 1}.${qIndex + 1}`;
                 const qKey = `p${pIndex}-Uq${qIndex}`;
+                const numbering = `${pIndex + 1}.${qIndex + 1}`;
                 const expandedQ = expandedQuestions.has(qKey);
 
                 return (
@@ -428,7 +455,7 @@ export default function FormBuilder() {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* Sections */}
+              {/* SECTIONS */}
               {page.sections.map((sec, sIndex) => {
                 const secKey = `p${pIndex}-s${sIndex}`;
                 const secExpanded = expandedSections.has(secKey);
@@ -436,42 +463,26 @@ export default function FormBuilder() {
                 return (
                   <SectionAccordion
                     key={secKey}
-                    section={sec}
-                    pageIndex={pIndex}
-                    sectionIndex={sIndex}
                     expanded={secExpanded}
                     onToggle={() => toggleSection(secKey)}
-
+                    // reorder / remove entire section
                     onMoveUp={() => moveSectionUp(pIndex, sIndex)}
                     onMoveDown={() => moveSectionDown(pIndex, sIndex)}
                     onRemove={() => removeSection(pIndex, sIndex)}
-
-                    onUpdateTitle={(newTitle) => {
-                      // immutably update the section title
-                      setForm((prev: FormSchema) => {
-                        const newPages = [...prev.pages];
-                        const pageCopy = { ...newPages[pIndex] };
-                        const secCopy = [...pageCopy.sections];
-                        const secObj = { ...secCopy[sIndex] };
-                        secObj.title = newTitle;
-                        secCopy[sIndex] = secObj;
-                        pageCopy.sections = secCopy;
-                        newPages[pIndex] = pageCopy;
-                        return { ...prev, pages: newPages };
-                      });
-                    }}
+                    // add question to this section
+                    onAddQuestion={() => addQuestionToSection(pIndex, sIndex)}
+                    // reorder / remove child question
+                    onMoveQuestionUp={(qIdx) => moveSectionQuestionUp(pIndex, sIndex, qIdx)}
+                    onMoveQuestionDown={(qIdx) => moveSectionQuestionDown(pIndex, sIndex, qIdx)}
+                    onRemoveQuestion={(qIdx) => removeSectionQuestion(pIndex, sIndex, qIdx)}
                     onUpdateQuestion={(qIdx, updatedQ) =>
                       updateSectionQuestion(pIndex, sIndex, qIdx, updatedQ)
                     }
-                    onMoveQuestionUp={(qIdx) =>
-                      moveSectionQuestionUp(pIndex, sIndex, qIdx)
-                    }
-                    onMoveQuestionDown={(qIdx) =>
-                      moveSectionQuestionDown(pIndex, sIndex, qIdx)
-                    }
-                    onRemoveQuestion={(qIdx) =>
-                      removeSectionQuestion(pIndex, sIndex, qIdx)
-                    }
+                    // NEW: pass the title updater
+                    onUpdateTitle={(newTitle) => updateSectionTitle(pIndex, sIndex, newTitle)}
+                    section={sec}
+                    pageIndex={pIndex}
+                    sectionIndex={sIndex}
                   />
                 );
               })}

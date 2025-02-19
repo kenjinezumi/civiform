@@ -1,5 +1,7 @@
 /**
  * src/components/admin/SkipLogicFields.tsx
+ *
+ * For editing skip logic fields
  */
 import React from 'react';
 import { Box, TextField, FormControl, Select, MenuItem, InputLabel } from '@mui/material';

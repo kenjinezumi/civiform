@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Box, TextField, FormControl, Select, MenuItem, InputLabel } from '@mui/material';
-import { SkipLogicCondition, OperatorType, ActionType } from '../../types/formTypes';
+import { SkipLogicCondition, OperatorType, ActionType } from '../../../types/formTypes';
 
 interface SkipLogicProps {
   skip: SkipLogicCondition;

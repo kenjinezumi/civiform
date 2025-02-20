@@ -19,11 +19,11 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import { useHierFormController } from '../../controllers/useHierFormController';
-import { TipTapEditor } from './TipTapEditor';
+import { useHierFormController } from '../../../controllers/useHierFormController';
+import { TipTapEditor } from '../../shared/TipTapEditor';
 import { QuestionAccordion } from './QuestionAccordion';
 import { SectionAccordion } from './SectionAccordion';
-import { FormSchema, Question } from '../../types/formTypes';
+import { FormSchema, Question } from '../../../types/formTypes';
 
 /** Helper to swap items in an array */
 function swap<T>(arr: T[], i: number, j: number) {

@@ -19,7 +19,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import { Question, SkipLogicCondition, AdvancedQuestionType } from '../../types/formTypes';
+import { Question, SkipLogicCondition, AdvancedQuestionType } from '../../../types/formTypes';
 import { SkipLogicFields } from './SkipLogicFields';
 
 interface QuestionAccordionProps {

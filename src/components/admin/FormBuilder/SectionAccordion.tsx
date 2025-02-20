@@ -18,7 +18,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import { Section, Question } from '../../types/formTypes';
+import { Section, Question } from '../../../types/formTypes';
 import { QuestionAccordion } from './QuestionAccordion';
 
 interface SectionAccordionProps {

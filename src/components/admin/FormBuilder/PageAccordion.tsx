@@ -22,7 +22,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import { Page, Question } from '../../types/formTypes';
+import { Page, Question } from '../../../types/formTypes';
 import { QuestionAccordion } from './QuestionAccordion';
 import { SectionAccordion } from './SectionAccordion';
 

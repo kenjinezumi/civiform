@@ -1,3 +1,6 @@
+/**
+ * src/components/admin/SectionAccordion.tsx
+ */
 import React from 'react';
 import {
   Accordion,
@@ -48,6 +51,10 @@ interface SectionAccordionProps {
 
   // Optional callback to immutably set the section title
   onUpdateTitle?: (newTitle: string) => void;
+
+  // *** ADDED for expand/collapse each question
+  expandedQuestions: Set<string>;
+  toggleQuestion: (qKey: string) => void;
 }
 
 export function SectionAccordion({
@@ -65,6 +72,8 @@ export function SectionAccordion({
   onRemoveQuestion,
   onUpdateQuestion,
   onUpdateTitle,
+  expandedQuestions,
+  toggleQuestion,
 }: SectionAccordionProps) {
   const sectionNum = `${pageIndex + 1}.${sectionIndex + 1}`;
 
@@ -85,7 +94,7 @@ export function SectionAccordion({
               // Immutably update in parent
               onUpdateTitle(e.target.value);
             } else {
-              // Directly mutating is discouraged, but fallback if no parent callback
+              // Direct fallback (not recommended, but just in case)
               section.title = e.target.value;
             }
           }}
@@ -116,18 +125,18 @@ export function SectionAccordion({
         {/* Render each question */}
         {section.questions.map((question, qIndex) => {
           const numbering = `${sectionNum}.${qIndex + 1}`;
-          // If you want each question expanded individually from the parent:
-          //   pass a boolean `expanded` to QuestionAccordion here
-          //   and pass `onToggle={() => ...}` too, referencing parent's state
-          //
-          // For now, we just keep them collapsed by default, or pass a separate logic
+
+          // Make a unique key that matches how we do unsectioned questions
+          const qKey = `p${pageIndex}-s${sectionIndex}-q${qIndex}`;
+          const isExpanded = expandedQuestions.has(qKey);
+
           return (
             <QuestionAccordion
-              key={qIndex}
+              key={qKey}
               question={question}
               numbering={numbering}
-              expanded={false}
-              onToggle={() => {}}
+              expanded={isExpanded}
+              onToggle={() => toggleQuestion(qKey)}
               onUpdate={(upd) => onUpdateQuestion(qIndex, upd)}
               onMoveUp={() => onMoveQuestionUp(qIndex)}
               onMoveDown={() => onMoveQuestionDown(qIndex)}

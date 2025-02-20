@@ -183,6 +183,8 @@ export function PageAccordion({
               onMoveQuestionDown={(qIndex) => onMoveSectionQuestionDown(sIndex, qIndex)}
               onRemoveQuestion={(qIndex) => onRemoveSectionQuestion(sIndex, qIndex)}
               onUpdateQuestion={(qIndex, updatedQ) => onUpdateSectionQuestion(sIndex, qIndex, updatedQ)}
+              expandedQuestions={new Set()}
+              toggleQuestion={() => {}}
             />
           );
         })}

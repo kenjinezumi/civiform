@@ -1,8 +1,5 @@
 /**
  * src/components/admin/FormBuilder.tsx
- *
- * Full "patch" so you can remove and reorder everything,
- * and reference removeUnsectionedQuestion in <QuestionAccordion onRemove={...} />.
  */
 import React, { useState } from 'react';
 import {
@@ -51,6 +48,7 @@ export default function FormBuilder() {
   // track expansions
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  /** For ALL questions (both unsectioned & within sections), we use the same Set. */
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
@@ -480,6 +478,11 @@ export default function FormBuilder() {
                     }
                     // NEW: pass the title updater
                     onUpdateTitle={(newTitle) => updateSectionTitle(pIndex, sIndex, newTitle)}
+                    
+                   
+                    expandedQuestions={expandedQuestions}
+                    toggleQuestion={toggleQuestion}
+                    
                     section={sec}
                     pageIndex={pIndex}
                     sectionIndex={sIndex}

@@ -14,7 +14,7 @@ function Home() {
   };
 
   return (
-    <SiteLayout>
+    <>
       <Box textAlign="center" sx={{ mt: 4 }}>
         <Typography variant="h4" gutterBottom>
           {t('welcomeTitle')}
@@ -31,7 +31,7 @@ function Home() {
           {t('createNewForm')}
         </Button>
       </Box>
-    </SiteLayout>
+    </>
   );
 }
 

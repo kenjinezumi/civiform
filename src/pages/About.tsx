@@ -8,14 +8,14 @@ function About() {
   const { t } = useTranslation();
 
   return (
-    <SiteLayout>
+    <>
       <Typography variant="h5" gutterBottom>
         {t('aboutTitle')}
       </Typography>
       <Typography variant="body2">
         {t('aboutDesc')}
       </Typography>
-    </SiteLayout>
+      </>
   );
 }
 

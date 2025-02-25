@@ -39,7 +39,7 @@ function AdminDashboard() {
   };
 
   return (
-    <AdminLayout>
+    <>
       <Typography variant="h4" gutterBottom>
         Admin Dashboard
       </Typography>
@@ -68,7 +68,7 @@ function AdminDashboard() {
         accept=".xls,.xlsx"
         onChange={handleFileChange}
       />
-    </AdminLayout>
+    </>
   );
 }
 

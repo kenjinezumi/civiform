@@ -1,3 +1,4 @@
+// src/components/layout/Header.tsx
 import React, { useState } from 'react';
 import {
   AppBar,
@@ -20,6 +21,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import InfoIcon from '@mui/icons-material/Info';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import LogoutIcon from '@mui/icons-material/Logout';
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck'; // for My Forms
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -40,6 +42,8 @@ function Header() {
     { label: t('home') || 'Home', icon: <HomeIcon />, path: '/' },
     { label: t('about') || 'About', icon: <InfoIcon />, path: '/about' },
     { label: t('createNewForm') || 'Create New Form', icon: <AddBoxIcon />, path: '/admin/forms/builder' },
+    // NEW: "My Forms" route
+    { label: t('myFormsTitle') || 'My Forms', icon: <PlaylistAddCheckIcon />, path: '/my-forms' },
   ];
 
   const handleLogout = () => {
@@ -81,7 +85,7 @@ function Header() {
       <AppBar position="static">
         <Toolbar>
           {/* HAMBURGER ICON */}
-          <IconButton 
+          <IconButton
             edge="start"
             color="inherit"
             aria-label="menu"

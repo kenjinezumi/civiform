@@ -11,9 +11,12 @@ const AdminLayout: FC<AdminLayoutProps> = ({ children }) => {
     <>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6">CiviForm Admin</Typography>
+          <Typography variant="h6">
+            CiviForm Admin
+          </Typography>
         </Toolbar>
       </AppBar>
+
       <Container maxWidth="lg" style={{ marginTop: '2rem' }}>
         {children}
       </Container>

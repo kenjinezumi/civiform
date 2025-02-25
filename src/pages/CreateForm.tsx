@@ -30,7 +30,7 @@ function CreateForm() {
   };
 
   return (
-    <AdminLayout>
+    <>
       <Typography variant="h5" gutterBottom>
         Create a New Form
       </Typography>
@@ -56,7 +56,7 @@ function CreateForm() {
           Submit
         </Button>
       </Box>
-    </AdminLayout>
+    </>
   );
 }
 

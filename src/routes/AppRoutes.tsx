@@ -10,8 +10,11 @@ import PublicForm from '../components/public/PublicForm';
 
 // Admin / Protected
 import AdminDashboard from '../pages/AdminDashboard';
-import FormBuilder from '../components/admin/FormBuilder';
+import FormBuilder from '../components/admin/FormBuilder/FormBuilder';
 import MyForms from '../pages/MyForms';
+
+// NEW: Import the CreateForm page
+import CreateForm from '../pages/CreateForm';
 
 // Layout & Auth
 import SiteLayout from '../components/layout/SiteLayout';
@@ -78,6 +81,18 @@ function AppRoutes() {
             <RequireAuth>
               <SiteLayout>
                 <MyForms />
+              </SiteLayout>
+            </RequireAuth>
+          }
+        />
+
+        {/* NEW PROTECTED ROUTE: Create Form */}
+        <Route
+          path="/admin/forms/create"
+          element={
+            <RequireAuth>
+              <SiteLayout>
+                <CreateForm />
               </SiteLayout>
             </RequireAuth>
           }

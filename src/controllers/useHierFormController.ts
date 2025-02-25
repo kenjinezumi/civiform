@@ -8,6 +8,7 @@
  */
 import { useState } from 'react';
 import { FormSchema, Page, Question } from '../types/formTypes';
+import axios from 'axios';
 
 export function useHierFormController() {
   const [form, setForm] = useState<FormSchema>({
@@ -103,12 +104,16 @@ export function useHierFormController() {
   
   // A stub for saving the form
   async function saveForm() {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      console.log('Saving form data:', form);
-      // real API call, e.g. await axios.post(...)
+      // Adjust your backend endpoint as needed
+      const response = await axios.post('http://127.0.0.1:8000/forms/', form);
+      console.log('Form saved successfully:', response.data);
+      alert(`Form saved! ID: ${response.data.id}`);
     } catch (err: any) {
-      setError(err.message);
+      console.error('Error saving form:', err);
+      setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
     }

@@ -74,6 +74,17 @@ function AppRoutes() {
             </RequireAuth>
           }
         />
+        <Route
+  path="/admin/forms/builder/:formId"
+  element={
+    <RequireAuth>
+      <SiteLayout>
+        <FormBuilder />
+      </SiteLayout>
+    </RequireAuth>
+  }
+/>
+
         {/* NEW PROTECTED ROUTE: My Forms */}
         <Route
           path="/my-forms"

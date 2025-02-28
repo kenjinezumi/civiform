@@ -81,7 +81,7 @@ export default function MyForms() {
     if (!window.confirm('Are you sure you want to delete this form?')) return;
     try {
       // example patch
-      await axios.patch(`http://127.0.0.1:8000/forms/${formId}`, { is_deleted: true });
+      await axios.delete(`http://127.0.0.1:8000/forms/${formId}`);
       setForms((prev) => prev.filter((f) => f.id !== formId));
     } catch (err: any) {
       alert(`Error: ${err.response?.data?.detail || err.message}`);

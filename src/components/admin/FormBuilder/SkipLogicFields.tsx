@@ -24,9 +24,12 @@ export function SkipLogicFields({ skip, onChange }: SkipLogicProps) {
 
   // Handlers
   const handleRefChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Let the user type any numeric string (including empty).
     setLocalRef(e.target.value);
+    const parsed = parseInt(e.target.value, 10);
+    const val = isNaN(parsed) ? 0 : parsed;
+    onChange({ ...skip, referenceQuestionIndex: val });
   };
+  
 
   const handleRefBlur = () => {
     // On blur, parse the localRef. If invalid or empty, default to 0

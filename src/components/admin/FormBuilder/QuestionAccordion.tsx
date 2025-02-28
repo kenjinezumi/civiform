@@ -1,3 +1,9 @@
+/**
+ * src/components/admin/FormBuilder/QuestionAccordion.tsx
+ *
+ * Renders a single question, including skip-logic editing.
+ */
+
 import React from 'react';
 import {
   Accordion,
@@ -14,6 +20,7 @@ import {
   IconButton,
   Divider,
 } from '@mui/material';
+
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
@@ -23,25 +30,13 @@ import { Question, SkipLogicCondition, AdvancedQuestionType } from '../../../typ
 import { SkipLogicFields } from './SkipLogicFields';
 
 interface QuestionAccordionProps {
-  /** The question data we are editing. */
   question: Question;
-  /** A string like "2.1.3" to show the question number. */
   numbering: string;
-  /** Whether this accordion is expanded (controlled by parent). */
   expanded: boolean;
-  /**
-   * Called when the user clicks on the accordion header,
-   * so the parent can toggle the open/closed state.
-   */
   onToggle: () => void;
-
-  /** Called when user changes question fields. */
   onUpdate: (updated: Question) => void;
-  /** Move question up in parent's array. */
   onMoveUp: () => void;
-  /** Move question down in parent's array. */
   onMoveDown: () => void;
-  /** Remove question from parent's array. */
   onRemove: () => void;
 }
 
@@ -55,7 +50,7 @@ export function QuestionAccordion({
   onMoveDown,
   onRemove,
 }: QuestionAccordionProps) {
-  // Provide a default skip logic if the question has none
+  // If skipLogic is null, we provide a default object
   const skip: SkipLogicCondition = question.skipLogic ?? {
     referenceQuestionIndex: 0,
     operator: '==',
@@ -63,8 +58,16 @@ export function QuestionAccordion({
     action: 'show',
   };
 
+  // Handler to push updated skip logic to the parent
+  const handleSkipChange = (updatedSkip: SkipLogicCondition) => {
+    onUpdate({
+      ...question,
+      skipLogic: updatedSkip,
+    });
+  };
+
   return (
-    <Accordion expanded={expanded} onChange={onToggle}>
+    <Accordion expanded={expanded} onChange={onToggle} sx={{ mb: 1 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Typography>
           {numbering} - {question.label || '(untitled)'}
@@ -72,6 +75,7 @@ export function QuestionAccordion({
       </AccordionSummary>
 
       <AccordionDetails>
+        {/* Basic question fields */}
         <TextField
           label="Question Label"
           value={question.label}
@@ -85,22 +89,17 @@ export function QuestionAccordion({
           <Select
             label="Question Type"
             value={question.type}
-            onChange={(e) =>
-              onUpdate({
-                ...question,
-                // Disallow 'section' if you like
-                type: e.target.value === 'section'
-                  ? 'text'
-                  : (e.target.value as AdvancedQuestionType),
-              })
-            }
+            onChange={(e) => onUpdate({
+              ...question,
+              // If the user picks 'section', override to 'text' or disallow
+              type: e.target.value === 'section' ? 'text' : (e.target.value as AdvancedQuestionType),
+            })}
           >
             <MenuItem value="text">Text</MenuItem>
             <MenuItem value="radio">Radio</MenuItem>
             <MenuItem value="checkbox">Checkbox</MenuItem>
             <MenuItem value="select">Dropdown</MenuItem>
             <MenuItem value="rating">Rating</MenuItem>
-            {/* etc... */}
           </Select>
         </FormControl>
 
@@ -108,7 +107,9 @@ export function QuestionAccordion({
           control={
             <Checkbox
               checked={question.required}
-              onChange={(e) => onUpdate({ ...question, required: e.target.checked })}
+              onChange={(e) =>
+                onUpdate({ ...question, required: e.target.checked })
+              }
             />
           }
           label="Required?"
@@ -116,14 +117,15 @@ export function QuestionAccordion({
 
         <Divider sx={{ my: 2 }} />
 
-        <Typography variant="subtitle2">Skip Logic</Typography>
-        <SkipLogicFields
-          skip={skip}
-          onChange={(updatedSkip) => onUpdate({ ...question, skipLogic: updatedSkip })}
-        />
+        {/* Skip Logic Section */}
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Skip Logic
+        </Typography>
+        <SkipLogicFields skip={skip} onChange={handleSkipChange} />
 
         <Divider sx={{ my: 2 }} />
 
+        {/* Reorder / Remove Buttons */}
         <IconButton onClick={onMoveUp} sx={{ mr: 1 }}>
           <ArrowUpwardIcon />
         </IconButton>

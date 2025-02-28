@@ -1,12 +1,8 @@
 /**
  * src/controllers/useHierFormController.ts
  *
- * A custom hook that manages a multi-page form with:
- *   pages[] -> unsectioned[] + sections[] -> questions[]
- * plus advanced question fields like rating (ratingMin, ratingMax)
- * and optional skipLogic.
- *
- * Also includes create/update logic for the backend via axios.
+ * Manages a multi-page form (pages -> unsectioned & sections -> questions).
+ * Includes advanced skip logic, rating, etc. Also handles create/update via axios.
  */
 
 import { useState } from 'react';
@@ -28,13 +24,14 @@ function swap<T>(arr: T[], i: number, j: number) {
 }
 
 export function useHierFormController() {
-  // 1) Local form state: default to a new form with one page
+  // Local form state: default to a new form with one blank page
   const [form, setForm] = useState<FormSchema>({
     title: 'My Multi-Page Form',
     description: 'A multi-page form with sections',
     published: false,
     country: '',
     created_by: '',
+    updated_at: null,
     pages: [
       {
         title: 'Page 1',
@@ -45,14 +42,12 @@ export function useHierFormController() {
     ],
   });
 
-  // Loading/error states for async calls
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  //
-  // -----------------------------
-  // PAGE-LEVEL CRUD / reorder
-  // -----------------------------
+  // ----------------------------------
+  // PAGE-LEVEL CRUD
+  // ----------------------------------
   function addPage() {
     setForm((prev) => {
       const newPages = [...prev.pages];
@@ -92,130 +87,13 @@ export function useHierFormController() {
     });
   }
 
-  //
-  // -----------------------------
+  // ----------------------------------
   // UNSECTIONED QUESTIONS
-  // -----------------------------
+  // ----------------------------------
   function addUnsectionedQuestion(pageIndex: number) {
     setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const defaultQ: Question = {
-        label: '',
-        type: 'text' as AdvancedQuestionType,
-        required: false,
-        placeholder: '',
-        helpText: '',
-        choices: [],
-      };
-      pageObj.unsectioned = [...pageObj.unsectioned, defaultQ];
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function removeUnsectionedQuestion(pageIndex: number, qIndex: number) {
-    setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const unsec = [...pageObj.unsectioned];
-      unsec.splice(qIndex, 1);
-      pageObj.unsectioned = unsec;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function moveUnsectionedQuestionUp(pageIndex: number, qIndex: number) {
-    if (qIndex <= 0) return;
-    setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const unsec = [...pageObj.unsectioned];
-      swap(unsec, qIndex, qIndex - 1);
-      pageObj.unsectioned = unsec;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function moveUnsectionedQuestionDown(pageIndex: number, qIndex: number) {
-    setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const unsec = [...pageObj.unsectioned];
-      if (qIndex >= unsec.length - 1) return prev;
-      swap(unsec, qIndex, qIndex + 1);
-      pageObj.unsectioned = unsec;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  //
-  // -----------------------------
-  // SECTIONS
-  // -----------------------------
-  function addSection(pageIndex: number) {
-    setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      pageObj.sections = [
-        ...pageObj.sections,
-        { title: 'New Section', questions: [] },
-      ];
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function removeSection(pageIndex: number, sectionIndex: number) {
-    setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const secs = [...pageObj.sections];
-      secs.splice(sectionIndex, 1);
-      pageObj.sections = secs;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function moveSectionUp(pageIndex: number, sectionIndex: number) {
-    if (sectionIndex <= 0) return;
-    setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const secs = [...pageObj.sections];
-      swap(secs, sectionIndex, sectionIndex - 1);
-      pageObj.sections = secs;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  function moveSectionDown(pageIndex: number, sectionIndex: number) {
-    setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const secs = [...pageObj.sections];
-      if (sectionIndex >= secs.length - 1) return prev;
-      swap(secs, sectionIndex, sectionIndex + 1);
-      pageObj.sections = secs;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
-    });
-  }
-
-  //
-  // -----------------------------
-  // QUESTIONS IN A SECTION
-  // -----------------------------
-  function addQuestionToSection(pageIndex: number, sectionIndex: number) {
-    setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const sectionsCopy = [...pageObj.sections];
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
 
       const defaultQ: Question = {
         label: '',
@@ -226,21 +104,136 @@ export function useHierFormController() {
         choices: [],
       };
 
-      sectionsCopy[sectionIndex] = {
-        ...sectionsCopy[sectionIndex],
-        questions: [...sectionsCopy[sectionIndex].questions, defaultQ],
+      pageObj.unsectioned = [...pageObj.unsectioned, defaultQ];
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
+    });
+  }
+
+  function removeUnsectionedQuestion(pageIndex: number, qIndex: number) {
+    setForm((prev) => {
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      const unsec = [...pageObj.unsectioned];
+      unsec.splice(qIndex, 1);
+      pageObj.unsectioned = unsec;
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
+    });
+  }
+
+  function moveUnsectionedQuestionUp(pageIndex: number, qIndex: number) {
+    if (qIndex <= 0) return;
+    setForm((prev) => {
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      const unsec = [...pageObj.unsectioned];
+      swap(unsec, qIndex, qIndex - 1);
+      pageObj.unsectioned = unsec;
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
+    });
+  }
+
+  function moveUnsectionedQuestionDown(pageIndex: number, qIndex: number) {
+    setForm((prev) => {
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      const unsec = [...pageObj.unsectioned];
+      if (qIndex >= unsec.length - 1) return prev;
+      swap(unsec, qIndex, qIndex + 1);
+      pageObj.unsectioned = unsec;
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
+    });
+  }
+
+  // ----------------------------------
+  // SECTIONS
+  // ----------------------------------
+  function addSection(pageIndex: number) {
+    setForm((prev) => {
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      pageObj.sections = [
+        ...pageObj.sections,
+        { title: 'New Section', questions: [] },
+      ];
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
+    });
+  }
+
+  function removeSection(pageIndex: number, sectionIndex: number) {
+    setForm((prev) => {
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      const secs = [...pageObj.sections];
+      secs.splice(sectionIndex, 1);
+      pageObj.sections = secs;
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
+    });
+  }
+
+  function moveSectionUp(pageIndex: number, sectionIndex: number) {
+    if (sectionIndex <= 0) return;
+    setForm((prev) => {
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      const secs = [...pageObj.sections];
+      swap(secs, sectionIndex, sectionIndex - 1);
+      pageObj.sections = secs;
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
+    });
+  }
+
+  function moveSectionDown(pageIndex: number, sectionIndex: number) {
+    setForm((prev) => {
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      const secs = [...pageObj.sections];
+      if (sectionIndex >= secs.length - 1) return prev;
+      swap(secs, sectionIndex, sectionIndex + 1);
+      pageObj.sections = secs;
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
+    });
+  }
+
+  // ----------------------------------
+  // QUESTIONS IN A SECTION
+  // ----------------------------------
+  function addQuestionToSection(pageIndex: number, sectionIndex: number) {
+    setForm((prev) => {
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      const secs = [...pageObj.sections];
+
+      const defaultQ: Question = {
+        label: '',
+        type: 'text',
+        required: false,
+        placeholder: '',
+        helpText: '',
+        choices: [],
       };
 
-      pageObj.sections = sectionsCopy;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
+      secs[sectionIndex] = {
+        ...secs[sectionIndex],
+        questions: [...secs[sectionIndex].questions, defaultQ],
+      };
+      pageObj.sections = secs;
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
     });
   }
 
   function removeSectionQuestion(pageIndex: number, sectionIndex: number, qIndex: number) {
     setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
       const secs = [...pageObj.sections];
       const secObj = { ...secs[sectionIndex] };
       const qs = [...secObj.questions];
@@ -248,16 +241,16 @@ export function useHierFormController() {
       secObj.questions = qs;
       secs[sectionIndex] = secObj;
       pageObj.sections = secs;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
     });
   }
 
   function moveSectionQuestionUp(pageIndex: number, sectionIndex: number, qIndex: number) {
     if (qIndex <= 0) return;
     setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
       const secs = [...pageObj.sections];
       const secObj = { ...secs[sectionIndex] };
       const qs = [...secObj.questions];
@@ -265,15 +258,15 @@ export function useHierFormController() {
       secObj.questions = qs;
       secs[sectionIndex] = secObj;
       pageObj.sections = secs;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
     });
   }
 
   function moveSectionQuestionDown(pageIndex: number, sectionIndex: number, qIndex: number) {
     setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
       const secs = [...pageObj.sections];
       const secObj = { ...secs[sectionIndex] };
       const qs = [...secObj.questions];
@@ -282,45 +275,41 @@ export function useHierFormController() {
       secObj.questions = qs;
       secs[sectionIndex] = secObj;
       pageObj.sections = secs;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
     });
   }
 
-  //
-  // -------------- ADVANCED --------------
-  // e.g. adding a rating question or skipLogic
-  //
+  // ----------------------------------
+  // ADVANCED: e.g. rating, skip logic
+  // ----------------------------------
   function addRatingQuestionToSection(pageIndex: number, sectionIndex: number) {
     setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
-      const sectionsCopy = [...pageObj.sections];
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
+      const secs = [...pageObj.sections];
 
       const ratingQ: Question = {
         label: 'Rate from 1-5',
-        type: 'rating' as AdvancedQuestionType,
+        type: 'rating',
         required: false,
         placeholder: '',
         helpText: 'Pick a number',
         choices: [],
-        // optional rating fields
         ratingMin: 1,
         ratingMax: 5,
       };
 
-      sectionsCopy[sectionIndex] = {
-        ...sectionsCopy[sectionIndex],
-        questions: [...sectionsCopy[sectionIndex].questions, ratingQ],
+      secs[sectionIndex] = {
+        ...secs[sectionIndex],
+        questions: [...secs[sectionIndex].questions, ratingQ],
       };
-
-      pageObj.sections = sectionsCopy;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
+      pageObj.sections = secs;
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
     });
   }
 
-  // Example: function to set skipLogic on a question
   function setSkipLogicOnQuestion(
     pageIndex: number,
     sectionIndex: number,
@@ -328,87 +317,83 @@ export function useHierFormController() {
     skip: SkipLogicCondition
   ) {
     setForm((prev) => {
-      const newPages = [...prev.pages];
-      const pageObj = { ...newPages[pageIndex] };
+      const pagesCopy = [...prev.pages];
+      const pageObj = { ...pagesCopy[pageIndex] };
       const secs = [...pageObj.sections];
       const secObj = { ...secs[sectionIndex] };
       const qs = [...secObj.questions];
-      const qCopy = { ...qs[qIndex] };
 
+      const qCopy = { ...qs[qIndex] };
       qCopy.skipLogic = skip;
       qs[qIndex] = qCopy;
+
       secObj.questions = qs;
       secs[sectionIndex] = secObj;
       pageObj.sections = secs;
-      newPages[pageIndex] = pageObj;
-      return { ...prev, pages: newPages };
+      pagesCopy[pageIndex] = pageObj;
+      return { ...prev, pages: pagesCopy };
     });
   }
 
-  //
-  // -----------------------------
+  // ----------------------------------
   // SAVE => create or update
-  // -----------------------------
+  // ----------------------------------
   async function saveForm() {
     setLoading(true);
     setError(null);
     try {
-      console.log('Sending to server:', form);
-      let response;
+      console.log('Saving form to server =>', form);
+      let resp;
       if (form.id) {
-        // If we have an id => update
-        response = await axios.put(`http://127.0.0.1:8000/forms/${form.id}`, form);
+        // PUT /forms/:id
+        resp = await axios.put(`http://127.0.0.1:8000/forms/${form.id}`, form);
       } else {
-        // Otherwise => create
-        response = await axios.post('http://127.0.0.1:8000/forms', form);
+        // POST /forms
+        resp = await axios.post('http://127.0.0.1:8000/forms', form);
       }
-      console.log('Form saved successfully:', response.data);
-      // If newly created, store id for next time
-      setForm(response.data);
-      alert(`Form saved! ID: ${response.data.id}`);
+      console.log('Saved OK =>', resp.data);
+      setForm(resp.data); // store new data, including updated_at
+      alert(`Form saved! ID: ${resp.data.id}`);
     } catch (err: any) {
       console.error('Error saving form:', err);
-      console.error('Response data:', err.response?.data);
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
     }
   }
 
-  //
-  // Return all state + actions
-  //
+  // Return everything
   return {
     form,
-    setForm,
+    setForm, // so the parent can do advanced changes if needed
     loading,
     error,
 
-    // Page actions
+    // Page-level
     addPage,
     removePage,
     movePageUp,
     movePageDown,
 
-    // Unsectioned question actions
+    // Unsectioned
     addUnsectionedQuestion,
     removeUnsectionedQuestion,
     moveUnsectionedQuestionUp,
     moveUnsectionedQuestionDown,
 
-    // Section actions
+    // Sections
     addSection,
     removeSection,
     moveSectionUp,
     moveSectionDown,
 
-    // Section question actions
+    // Section questions
     addQuestionToSection,
     removeSectionQuestion,
     moveSectionQuestionUp,
     moveSectionQuestionDown,
 
-    // Advanced extras
+    // Advanced
     addRatingQuestionToSection,
     setSkipLogicOnQuestion,
 

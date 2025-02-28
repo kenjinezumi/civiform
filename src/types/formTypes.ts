@@ -70,5 +70,6 @@ export interface FormSchema {
   published: boolean;
   country?: string;
   created_by?: string;
+  updated_at?: string | null;
   pages: Page[];
 }

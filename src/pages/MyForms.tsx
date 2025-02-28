@@ -34,7 +34,8 @@ interface FormData {
   title: string;
   description?: string;
   published?: boolean;
-  updated_at?: string;
+  updated_at?: string; // last updated
+  country?: string;    // new
   // etc.
 }
 
@@ -80,7 +81,7 @@ export default function MyForms() {
     if (e) e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this form?')) return;
     try {
-      // example patch
+      // example real delete
       await axios.delete(`http://127.0.0.1:8000/forms/${formId}`);
       setForms((prev) => prev.filter((f) => f.id !== formId));
     } catch (err: any) {
@@ -171,10 +172,23 @@ export default function MyForms() {
                 }}
                 onClick={() => handleEditClick(f.id)}
               >
-                <Typography variant="h6">{f.title}</Typography>
+                <Typography variant="h6">
+                  {f.title} (ID: {f.id})
+                </Typography>
                 {f.description && (
                   <Typography variant="body2" color="text.secondary">
                     {f.description}
+                  </Typography>
+                )}
+                {/* Show country, updated_at if present */}
+                {f.country && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    <strong>Country:</strong> {f.country}
+                  </Typography>
+                )}
+                {f.updated_at && (
+                  <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                    Last Updated: {new Date(f.updated_at).toLocaleString()}
                   </Typography>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>

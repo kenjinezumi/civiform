@@ -1,7 +1,7 @@
 /**
- * src/components/admin/SkipLogicFields.tsx
+ * src/components/admin/FormBuilder/SkipLogicFields.tsx
  *
- * For editing skip logic fields
+ * Allows editing referenceQuestionIndex, operator, value, and action
  */
 import React, { useState, useEffect } from 'react';
 import { Box, TextField, FormControl, Select, MenuItem, InputLabel } from '@mui/material';
@@ -13,50 +13,52 @@ interface SkipLogicProps {
 }
 
 export function SkipLogicFields({ skip, onChange }: SkipLogicProps) {
-  // Local state to hold the "Ref Q#" as a string, so user can type freely
-  const [localRef, setLocalRef] = useState(String(skip.referenceQuestionIndex));
+  // We'll store the referenceQuestionIndex as a string for live editing
+  const [refStr, setRefStr] = useState(String(skip.referenceQuestionIndex));
 
-  // Whenever `skip.referenceQuestionIndex` changes from parent,
-  // update our localRef state (in case it was changed externally).
   useEffect(() => {
-    setLocalRef(String(skip.referenceQuestionIndex));
+    setRefStr(String(skip.referenceQuestionIndex));
   }, [skip.referenceQuestionIndex]);
 
-  // Handlers
   const handleRefChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalRef(e.target.value);
-    const parsed = parseInt(e.target.value, 10);
-    const val = isNaN(parsed) ? 0 : parsed;
-    onChange({ ...skip, referenceQuestionIndex: val });
-  };
-  
+    const strVal = e.target.value;
+    setRefStr(strVal);
 
-  const handleRefBlur = () => {
-    // On blur, parse the localRef. If invalid or empty, default to 0
-    const parsed = parseInt(localRef, 10);
-    const val = isNaN(parsed) ? 0 : parsed;
-    onChange({ ...skip, referenceQuestionIndex: val });
+    const parsed = parseInt(strVal, 10);
+    onChange({
+      ...skip,
+      referenceQuestionIndex: isNaN(parsed) ? 0 : parsed,
+    });
   };
 
-  const handleOperator = (op: OperatorType) => {
-    onChange({ ...skip, operator: op });
+  const handleOperatorChange = (op: string) => {
+    onChange({
+      ...skip,
+      operator: op as OperatorType,
+    });
   };
-  const handleValue = (val: string) => {
-    onChange({ ...skip, value: val });
+
+  const handleValueChange = (val: string) => {
+    onChange({
+      ...skip,
+      value: val,
+    });
   };
-  const handleAction = (act: ActionType) => {
-    onChange({ ...skip, action: act });
+
+  const handleActionChange = (act: string) => {
+    onChange({
+      ...skip,
+      action: act as ActionType,
+    });
   };
 
   return (
-    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-      {/* Ref Q#: type="number" plus local string state */}
+    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
       <TextField
         label="Ref Q#"
         type="number"
-        value={localRef}
+        value={refStr}
         onChange={handleRefChange}
-        onBlur={handleRefBlur}
         sx={{ width: 80 }}
         inputProps={{ min: 0 }}
       />
@@ -66,7 +68,7 @@ export function SkipLogicFields({ skip, onChange }: SkipLogicProps) {
         <Select
           label="Operator"
           value={skip.operator}
-          onChange={(e) => handleOperator(e.target.value as OperatorType)}
+          onChange={(e) => handleOperatorChange(e.target.value)}
         >
           <MenuItem value="==">==</MenuItem>
           <MenuItem value="!=">!=</MenuItem>
@@ -78,8 +80,8 @@ export function SkipLogicFields({ skip, onChange }: SkipLogicProps) {
       <TextField
         label="Value"
         value={skip.value}
-        onChange={(e) => handleValue(e.target.value)}
-        sx={{ width: 80 }}
+        onChange={(e) => handleValueChange(e.target.value)}
+        sx={{ width: 100 }}
       />
 
       <FormControl sx={{ width: 90 }}>
@@ -87,7 +89,7 @@ export function SkipLogicFields({ skip, onChange }: SkipLogicProps) {
         <Select
           label="Action"
           value={skip.action}
-          onChange={(e) => handleAction(e.target.value as ActionType)}
+          onChange={(e) => handleActionChange(e.target.value)}
         >
           <MenuItem value="show">Show</MenuItem>
           <MenuItem value="hide">Hide</MenuItem>

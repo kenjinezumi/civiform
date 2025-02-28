@@ -12,9 +12,10 @@ import PublicForm from '../components/public/PublicForm';
 import AdminDashboard from '../pages/AdminDashboard';
 import FormBuilder from '../components/admin/FormBuilder/FormBuilder';
 import MyForms from '../pages/MyForms';
-
-// NEW: Import the CreateForm page
 import CreateForm from '../pages/CreateForm';
+
+// NEW: PartnerManager page for creating multiple URLs for each partner
+import PartnerManager from '../pages/PartnerManager';
 
 // Layout & Auth
 import SiteLayout from '../components/layout/SiteLayout';
@@ -53,7 +54,7 @@ function AppRoutes() {
         {/* Login route (no layout, or add if you wish) */}
         <Route path="/login" element={<Login />} />
 
-        {/* Protected routes (RequireAuth) */}
+        {/* Admin routes (RequireAuth) */}
         <Route
           path="/admin"
           element={
@@ -64,6 +65,8 @@ function AppRoutes() {
             </RequireAuth>
           }
         />
+
+        {/* A route for building or editing a form, optionally with :formId */}
         <Route
           path="/admin/forms/builder"
           element={
@@ -75,17 +78,17 @@ function AppRoutes() {
           }
         />
         <Route
-  path="/admin/forms/builder/:formId"
-  element={
-    <RequireAuth>
-      <SiteLayout>
-        <FormBuilder />
-      </SiteLayout>
-    </RequireAuth>
-  }
-/>
+          path="/admin/forms/builder/:formId"
+          element={
+            <RequireAuth>
+              <SiteLayout>
+                <FormBuilder />
+              </SiteLayout>
+            </RequireAuth>
+          }
+        />
 
-        {/* NEW PROTECTED ROUTE: My Forms */}
+        {/* My Forms (list of forms) */}
         <Route
           path="/my-forms"
           element={
@@ -97,13 +100,25 @@ function AppRoutes() {
           }
         />
 
-        {/* NEW PROTECTED ROUTE: Create Form */}
+        {/* Create a brand-new form */}
         <Route
           path="/admin/forms/create"
           element={
             <RequireAuth>
               <SiteLayout>
                 <CreateForm />
+              </SiteLayout>
+            </RequireAuth>
+          }
+        />
+
+        {/* NEW: Partner Manager route for multiple partner URLs */}
+        <Route
+          path="/partner-manager"
+          element={
+            <RequireAuth>
+              <SiteLayout>
+                <PartnerManager />
               </SiteLayout>
             </RequireAuth>
           }

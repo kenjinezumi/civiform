@@ -1,8 +1,9 @@
 /**
  * src/types/formTypes.ts
  *
- * Defines the hierarchical model:
+ * Defines your hierarchical model:
  * Form -> pages[] -> unsectioned[] + sections[] -> questions[]
+ * plus optional `id` if we are editing an existing form.
  */
 
 export type OperatorType = '==' | '!=' | 'contains' | 'not-contains';
@@ -51,7 +52,9 @@ export interface Page {
   sections: Section[];
 }
 
+// The optional `id` means if present, we do a PUT instead of POST
 export interface FormSchema {
+  id?: number;
   title: string;
   description: string;
   pages: Page[];

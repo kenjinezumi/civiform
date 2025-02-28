@@ -1,7 +1,16 @@
 /**
- * src/components/admin/FormBuilder.tsx
+ * src/components/admin/FormBuilder/FormBuilder.tsx
+ *
+ * A comprehensive form builder that:
+ *  - If the route param :id is "new", use a blank form from the hook.
+ *  - Otherwise, fetch an existing form from the server (GET /forms/:id).
+ *  - Unflatten it into form.pages if needed.
+ *  - Avoids calling hooks (useState, useEffect, etc.) conditionally.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
+
 import {
   Box,
   Typography,
@@ -11,6 +20,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -19,13 +29,18 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import { useHierFormController } from '../../../controllers/useHierFormController';
+// Custom components (import your own):
 import { TipTapEditor } from '../../shared/TipTapEditor';
 import { QuestionAccordion } from './QuestionAccordion';
 import { SectionAccordion } from './SectionAccordion';
+
+// Our custom hook
+import { useHierFormController } from '../../../controllers/useHierFormController';
+
+// Types
 import { FormSchema, Question } from '../../../types/formTypes';
 
-/** Helper to swap items in an array */
+// Helper to reorder array items
 function swap<T>(arr: T[], i: number, j: number) {
   const temp = arr[i];
   arr[i] = arr[j];
@@ -33,6 +48,13 @@ function swap<T>(arr: T[], i: number, j: number) {
 }
 
 export default function FormBuilder() {
+  // ----------------------------------------
+  // 1) Hooks must be at the top level
+  // ----------------------------------------
+  const { formId } = useParams<{ formId: string }>();
+  // if you want a typed param:
+  
+  // The main form hook
   const {
     form,
     setForm,
@@ -45,282 +67,401 @@ export default function FormBuilder() {
     saveForm,
   } = useHierFormController();
 
-  // track expansions
+  // Local states for fetching existing form data
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Expand/collapse states
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  /** For ALL questions (both unsectioned & within sections), we use the same Set. */
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
-  // -----------------------------------------------------------------
-  // 1) PAGES: remove, reorder
-  // -----------------------------------------------------------------
-  function removePage(pageIndex: number) {
+  // ----------------------------------------
+  // 2) useEffect to fetch if not "new"
+  // ----------------------------------------
+  useEffect(() => {
+    if (!formId || formId === 'new') {
+      console.log('New form => skip fetching existing');
+      return;
+    }
+
+    setFetching(true);
+    setFetchError(null);
+
+    axios
+      .get(`http://127.0.0.1:8000/forms/${formId}`)
+      .then((res) => {
+        const apiData = res.data;
+        console.log('Fetched existing form:', apiData);
+        // Unflatten into local pages, if your backend only stores top-level fields
+        const inflated: FormSchema = {
+          id: apiData.id, // so we do PUT next time
+          title: apiData.title || 'Untitled from server',
+          description: apiData.description || '',
+          pages: [
+            {
+              title: 'Page 1',
+              description: '',
+              unsectioned: [],
+              sections: [],
+            },
+          ],
+        };
+        setForm(inflated);
+      })
+      .catch((err) => {
+        console.error('Error fetching form:', err);
+        setFetchError(err.response?.data?.detail || err.message);
+      })
+      .finally(() => {
+        setFetching(false);
+      });
+  }, [formId, setForm]);
+
+  // ----------------------------------------
+  // 3) Conditionally render after Hooks
+  // ----------------------------------------
+  // If still fetching => spinner
+  if (fetching) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h6">Loading form (ID: {formId})...</Typography>
+        <CircularProgress sx={{ mt: 2 }} />
+      </Box>
+    );
+  }
+
+  // If we had an error
+  if (fetchError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">Error: {fetchError}</Typography>
+      </Box>
+    );
+  }
+
+  // Safe fallback so we don't crash on `form.pages`
+  const pages = form.pages ?? [];
+
+  // ----------------------------------------
+  // 4) Page-level CRUD / reorder
+  // ----------------------------------------
+  const removePage = (pageIndex: number) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
+      const oldPages = prev.pages ?? [];
+      const newPages = [...oldPages];
       newPages.splice(pageIndex, 1);
       return { ...prev, pages: newPages };
     });
-  }
-  function movePageUp(pageIndex: number) {
+  };
+
+  const movePageUp = (pageIndex: number) => {
     if (pageIndex <= 0) return;
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
+      const oldPages = prev.pages ?? [];
+      const newPages = [...oldPages];
       swap(newPages, pageIndex, pageIndex - 1);
       return { ...prev, pages: newPages };
     });
-  }
-  function movePageDown(pageIndex: number) {
+  };
+
+  const movePageDown = (pageIndex: number) => {
     setForm((prev: FormSchema) => {
-      if (pageIndex >= prev.pages.length - 1) return prev;
-      const newPages = [...prev.pages];
+      const oldPages = prev.pages ?? [];
+      if (pageIndex >= oldPages.length - 1) return prev;
+      const newPages = [...oldPages];
       swap(newPages, pageIndex, pageIndex + 1);
       return { ...prev, pages: newPages };
     });
-  }
+  };
 
-  // -----------------------------------------------------------------
-  // 2) UNSECTIONED QUESTIONS: remove, reorder
-  // -----------------------------------------------------------------
-  function removeUnsectionedQuestion(pageIndex: number, qIndex: number) {
+  // ----------------------------------------
+  // 5) Unsectioned Questions logic
+  // ----------------------------------------
+  const removeUnsectionedQuestion = (pageIndex: number, qIndex: number) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
-      const unsecCopy = [...pageCopy.unsectioned];
-      // remove the question from array
-      unsecCopy.splice(qIndex, 1);
-      pageCopy.unsectioned = unsecCopy;
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pageIndex] };
+      const unsec = [...pageCopy.unsectioned];
+      unsec.splice(qIndex, 1);
+      pageCopy.unsectioned = unsec;
+
+      const newPages = [...oldPages];
       newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
-  function moveUnsectionedQuestionUp(pageIndex: number, qIndex: number) {
+  };
+
+  const moveUnsectionedQuestionUp = (pageIndex: number, qIndex: number) => {
     if (qIndex <= 0) return;
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pageIndex] };
       const unsec = [...pageCopy.unsectioned];
       swap(unsec, qIndex, qIndex - 1);
       pageCopy.unsectioned = unsec;
+
+      const newPages = [...oldPages];
       newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
-  function moveUnsectionedQuestionDown(pageIndex: number, qIndex: number) {
+  };
+
+  const moveUnsectionedQuestionDown = (pageIndex: number, qIndex: number) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageCopy = { ...newPages[pageIndex] };
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pageIndex] };
       const unsec = [...pageCopy.unsectioned];
       if (qIndex >= unsec.length - 1) return prev;
       swap(unsec, qIndex, qIndex + 1);
       pageCopy.unsectioned = unsec;
+
+      const newPages = [...oldPages];
       newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
+  };
 
-  // -----------------------------------------------------------------
-  // 3) SECTIONS: remove, reorder, update
-  // -----------------------------------------------------------------
-  function removeSection(pageIndex: number, sectionIndex: number) {
+  // ----------------------------------------
+  // 6) Section-level CRUD / reorder
+  // ----------------------------------------
+  const removeSection = (pageIndex: number, sectionIndex: number) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageC = { ...newPages[pageIndex] };
-      const secs = [...pageC.sections];
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pageIndex] };
+      const secs = [...pageCopy.sections];
       secs.splice(sectionIndex, 1);
-      pageC.sections = secs;
-      newPages[pageIndex] = pageC;
+      pageCopy.sections = secs;
+
+      const newPages = [...oldPages];
+      newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
-  function moveSectionUp(pageIndex: number, sectionIndex: number) {
+  };
+
+  const moveSectionUp = (pageIndex: number, sectionIndex: number) => {
     if (sectionIndex <= 0) return;
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageC = { ...newPages[pageIndex] };
-      const secs = [...pageC.sections];
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pageIndex] };
+      const secs = [...pageCopy.sections];
       swap(secs, sectionIndex, sectionIndex - 1);
-      pageC.sections = secs;
-      newPages[pageIndex] = pageC;
+
+      pageCopy.sections = secs;
+      const newPages = [...oldPages];
+      newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
-  function moveSectionDown(pageIndex: number, sectionIndex: number) {
+  };
+
+  const moveSectionDown = (pageIndex: number, sectionIndex: number) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageC = { ...newPages[pageIndex] };
-      const secs = [...pageC.sections];
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pageIndex] };
+      const secs = [...pageCopy.sections];
       if (sectionIndex >= secs.length - 1) return prev;
       swap(secs, sectionIndex, sectionIndex + 1);
-      pageC.sections = secs;
-      newPages[pageIndex] = pageC;
+
+      pageCopy.sections = secs;
+      const newPages = [...oldPages];
+      newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
+  };
 
-  // NEW: Update section title immutably
-  function updateSectionTitle(pageIndex: number, sectionIndex: number, newTitle: string) {
+  const updateSectionTitle = (pageIndex: number, sectionIndex: number, newTitle: string) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageC = { ...newPages[pageIndex] };
-      const secs = [...pageC.sections];
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pageIndex] };
+      const secs = [...pageCopy.sections];
       const secCopy = { ...secs[sectionIndex] };
+
       secCopy.title = newTitle;
       secs[sectionIndex] = secCopy;
-      pageC.sections = secs;
-      newPages[pageIndex] = pageC;
+      pageCopy.sections = secs;
+
+      const newPages = [...oldPages];
+      newPages[pageIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
+  };
 
-  // -----------------------------------------------------------------
-  // 4) SECTION QUESTIONS: remove, reorder
-  // -----------------------------------------------------------------
-  function removeSectionQuestion(pageIndex: number, sectionIndex: number, qIndex: number) {
+  // ----------------------------------------
+  // 7) Section Questions
+  // ----------------------------------------
+  const removeSectionQuestion = (pIndex: number, sIndex: number, qIndex: number) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageC = { ...newPages[pageIndex] };
-      const secs = [...pageC.sections];
-      const secObj = { ...secs[sectionIndex] };
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pIndex] };
+
+      const secs = [...pageCopy.sections];
+      const secObj = { ...secs[sIndex] };
       const qs = [...secObj.questions];
+
       qs.splice(qIndex, 1);
       secObj.questions = qs;
-      secs[sectionIndex] = secObj;
-      pageC.sections = secs;
-      newPages[pageIndex] = pageC;
+      secs[sIndex] = secObj;
+
+      pageCopy.sections = secs;
+      const newPages = [...oldPages];
+      newPages[pIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
-  function moveSectionQuestionUp(pageIndex: number, sectionIndex: number, qIndex: number) {
+  };
+
+  const moveSectionQuestionUp = (pIndex: number, sIndex: number, qIndex: number) => {
     if (qIndex <= 0) return;
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageC = { ...newPages[pageIndex] };
-      const secs = [...pageC.sections];
-      const secObj = { ...secs[sectionIndex] };
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pIndex] };
+
+      const secs = [...pageCopy.sections];
+      const secObj = { ...secs[sIndex] };
       const qs = [...secObj.questions];
+
       swap(qs, qIndex, qIndex - 1);
       secObj.questions = qs;
-      secs[sectionIndex] = secObj;
-      pageC.sections = secs;
-      newPages[pageIndex] = pageC;
+      secs[sIndex] = secObj;
+      pageCopy.sections = secs;
+
+      const newPages = [...oldPages];
+      newPages[pIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
-  function moveSectionQuestionDown(pageIndex: number, sectionIndex: number, qIndex: number) {
+  };
+
+  const moveSectionQuestionDown = (pIndex: number, sIndex: number, qIndex: number) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageC = { ...newPages[pageIndex] };
-      const secs = [...pageC.sections];
-      const secObj = { ...secs[sectionIndex] };
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pIndex] };
+
+      const secs = [...pageCopy.sections];
+      const secObj = { ...secs[sIndex] };
       const qs = [...secObj.questions];
+
       if (qIndex >= qs.length - 1) return prev;
       swap(qs, qIndex, qIndex + 1);
+
       secObj.questions = qs;
-      secs[sectionIndex] = secObj;
-      pageC.sections = secs;
-      newPages[pageIndex] = pageC;
-      return { ...prev, pages: newPages };
-    });
-  }
+      secs[sIndex] = secObj;
+      pageCopy.sections = secs;
 
-  // -----------------------------------------------------------------
-  // 5) PAGE TITLE / DESCRIPTION
-  // -----------------------------------------------------------------
-  function updatePageTitle(pageIndex: number, newTitle: string) {
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pCopy = { ...newPages[pageIndex] };
-      pCopy.title = newTitle;
-      newPages[pageIndex] = pCopy;
+      const newPages = [...oldPages];
+      newPages[pIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
-  function updatePageDescription(pageIndex: number, newDesc: string) {
-    setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pCopy = { ...newPages[pageIndex] };
-      pCopy.description = newDesc;
-      newPages[pageIndex] = pCopy;
-      return { ...prev, pages: newPages };
-    });
-  }
+  };
 
-  // -----------------------------------------------------------------
-  // 6) UNSECTIONED QUESTION UPDATE
-  // -----------------------------------------------------------------
-  function updateUnsectionedQuestion(pageIndex: number, qIndex: number, updated: Question) {
+  // ----------------------------------------
+  // 8) Page Title / Description
+  // ----------------------------------------
+  const updatePageTitle = (pIndex: number, newTitle: string) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pCopy = { ...newPages[pageIndex] };
-      const unsec = [...pCopy.unsectioned];
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pIndex] };
+      pageCopy.title = newTitle;
+
+      const newPages = [...oldPages];
+      newPages[pIndex] = pageCopy;
+      return { ...prev, pages: newPages };
+    });
+  };
+
+  const updatePageDescription = (pIndex: number, newDesc: string) => {
+    setForm((prev: FormSchema) => {
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pIndex] };
+      pageCopy.description = newDesc;
+
+      const newPages = [...oldPages];
+      newPages[pIndex] = pageCopy;
+      return { ...prev, pages: newPages };
+    });
+  };
+
+  // ----------------------------------------
+  // 9) Unsectioned Question Update
+  // ----------------------------------------
+  const updateUnsectionedQuestion = (pIndex: number, qIndex: number, updated: Question) => {
+    setForm((prev: FormSchema) => {
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pIndex] };
+      const unsec = [...pageCopy.unsectioned];
       unsec[qIndex] = updated;
-      pCopy.unsectioned = unsec;
-      newPages[pageIndex] = pCopy;
+      pageCopy.unsectioned = unsec;
+
+      const newPages = [...oldPages];
+      newPages[pIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
+  };
 
-  // -----------------------------------------------------------------
-  // 7) SECTION QUESTION UPDATE
-  // -----------------------------------------------------------------
-  function updateSectionQuestion(
-    pageIndex: number,
-    sectionIndex: number,
+  // ----------------------------------------
+  // 10) Section Question Update
+  // ----------------------------------------
+  const updateSectionQuestion = (
+    pIndex: number,
+    sIndex: number,
     qIndex: number,
     updated: Question
-  ) {
+  ) => {
     setForm((prev: FormSchema) => {
-      const newPages = [...prev.pages];
-      const pageC = { ...newPages[pageIndex] };
-      const secs = [...pageC.sections];
-      const secObj = { ...secs[sectionIndex] };
+      const oldPages = prev.pages;
+      const pageCopy = { ...oldPages[pIndex] };
+
+      const secs = [...pageCopy.sections];
+      const secObj = { ...secs[sIndex] };
       const qs = [...secObj.questions];
+
       qs[qIndex] = updated;
       secObj.questions = qs;
-      secs[sectionIndex] = secObj;
-      pageC.sections = secs;
-      newPages[pageIndex] = pageC;
+      secs[sIndex] = secObj;
+      pageCopy.sections = secs;
+
+      const newPages = [...oldPages];
+      newPages[pIndex] = pageCopy;
       return { ...prev, pages: newPages };
     });
-  }
+  };
 
-  // -----------------------------------------------------------------
-  // 8) EXPAND / COLLAPSE
-  // -----------------------------------------------------------------
+  // ----------------------------------------
+  // 11) Expand/Collapse
+  // ----------------------------------------
   const togglePage = (pIndex: number) => {
     setExpandedPages((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(pIndex)) newSet.delete(pIndex);
-      else newSet.add(pIndex);
-      return newSet;
-    });
-  };
-  const toggleSection = (secKey: string) => {
-    setExpandedSections((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(secKey)) newSet.delete(secKey);
-      else newSet.add(secKey);
-      return newSet;
-    });
-  };
-  const toggleQuestion = (qKey: string) => {
-    setExpandedQuestions((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(qKey)) newSet.delete(qKey);
-      else newSet.add(qKey);
+      newSet.has(pIndex) ? newSet.delete(pIndex) : newSet.add(pIndex);
       return newSet;
     });
   };
 
-  function handleExpandCollapseAll() {
+  const toggleSection = (secKey: string) => {
+    setExpandedSections((prev) => {
+      const newSet = new Set(prev);
+      newSet.has(secKey) ? newSet.delete(secKey) : newSet.add(secKey);
+      return newSet;
+    });
+  };
+
+  const toggleQuestion = (qKey: string) => {
+    setExpandedQuestions((prev) => {
+      const newSet = new Set(prev);
+      newSet.has(qKey) ? newSet.delete(qKey) : newSet.add(qKey);
+      return newSet;
+    });
+  };
+
+  const handleExpandCollapseAll = () => {
     setAllExpanded(!allExpanded);
     if (!allExpanded) {
+      // expand everything
       const pSet = new Set<number>();
       const sSet = new Set<string>();
       const qSet = new Set<string>();
 
-      form.pages.forEach((page, pIndex) => {
+      for (let pIndex = 0; pIndex < pages.length; pIndex++) {
+        const page = pages[pIndex];
         pSet.add(pIndex);
 
         page.unsectioned.forEach((_, qIndex) => {
@@ -334,47 +475,57 @@ export default function FormBuilder() {
             qSet.add(`p${pIndex}-s${sIndex}-q${qqIndex}`);
           });
         });
-      });
+      }
 
       setExpandedPages(pSet);
       setExpandedSections(sSet);
       setExpandedQuestions(qSet);
     } else {
+      // collapse all
       setExpandedPages(new Set());
       setExpandedSections(new Set());
       setExpandedQuestions(new Set());
     }
-  }
+  };
 
-  // -----------------------------------------------------------------
-  // RENDER
-  // -----------------------------------------------------------------
+  // ----------------------------------------
+  // 12) Render everything
+  // ----------------------------------------
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        {loading ? 'Loading...' : 'Hierarchical Form Builder'}
+        Hierarchical Form Builder
       </Typography>
       {error && <Typography color="error">{error}</Typography>}
 
-      <Typography>Form Title: {form.title}</Typography>
-      <Typography sx={{ mb: 2 }}>Form Description: {form.description}</Typography>
+      <Typography>
+        <strong>ID:</strong> {form.id ?? '(new)'}
+      </Typography>
+      <Typography>
+        <strong>Title:</strong> {form.title || '(no title)'}
+      </Typography>
+      <Typography sx={{ mb: 2 }}>
+        <strong>Description:</strong> {form.description || '(no description)'}
+      </Typography>
 
       <Box sx={{ mb: 2 }}>
         <Button variant="contained" onClick={addPage} sx={{ mr: 2 }}>
           Add Page
         </Button>
-        <Button variant="outlined" onClick={handleExpandCollapseAll}>
+        <Button variant="outlined" onClick={handleExpandCollapseAll} sx={{ mr: 2 }}>
           {allExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           {allExpanded ? 'Collapse All' : 'Expand All'}
+        </Button>
+        <Button variant="contained" color="primary" disabled={loading} onClick={saveForm}>
+          {loading ? 'Saving...' : 'Save Form'}
         </Button>
       </Box>
 
       <Divider sx={{ my: 2 }} />
 
-      {/* RENDER EACH PAGE */}
-      {form.pages.map((page, pIndex) => {
-        const pageExpanded = expandedPages.has(pIndex);
+      {pages.map((page, pIndex) => {
         const pageKey = `page-${pIndex}`;
+        const pageExpanded = expandedPages.has(pIndex);
 
         return (
           <Accordion
@@ -390,7 +541,6 @@ export default function FormBuilder() {
             </AccordionSummary>
 
             <AccordionDetails>
-              {/* PAGE TITLE */}
               <Typography variant="subtitle2" sx={{ mt: 1 }}>
                 Page Title:
               </Typography>
@@ -400,7 +550,6 @@ export default function FormBuilder() {
                 onChange={(e) => updatePageTitle(pIndex, e.target.value)}
               />
 
-              {/* PAGE DESCRIPTION (TIPTAP) */}
               <Typography variant="subtitle2" sx={{ mt: 1 }}>
                 Page Description (Rich Text):
               </Typography>
@@ -409,7 +558,6 @@ export default function FormBuilder() {
                 onChange={(val) => updatePageDescription(pIndex, val)}
               />
 
-              {/* Move / Delete Page */}
               <Box sx={{ display: 'flex', gap: 1, my: 2 }}>
                 <IconButton onClick={() => movePageUp(pIndex)}>
                   <ArrowUpwardIcon />
@@ -422,7 +570,6 @@ export default function FormBuilder() {
                 </IconButton>
               </Box>
 
-              {/* Add Unsectioned Question or Add Section */}
               <Button onClick={() => addUnsectionedQuestion(pIndex)} sx={{ mr: 2 }}>
                 Add Unsectioned Q
               </Button>
@@ -430,7 +577,7 @@ export default function FormBuilder() {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* UNSECTIONED QUESTIONS */}
+              {/* Unsectioned questions */}
               {page.unsectioned.map((question, qIndex) => {
                 const qKey = `p${pIndex}-Uq${qIndex}`;
                 const numbering = `${pIndex + 1}.${qIndex + 1}`;
@@ -453,7 +600,7 @@ export default function FormBuilder() {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* SECTIONS */}
+              {/* Sections */}
               {page.sections.map((sec, sIndex) => {
                 const secKey = `p${pIndex}-s${sIndex}`;
                 const secExpanded = expandedSections.has(secKey);
@@ -463,26 +610,19 @@ export default function FormBuilder() {
                     key={secKey}
                     expanded={secExpanded}
                     onToggle={() => toggleSection(secKey)}
-                    // reorder / remove entire section
                     onMoveUp={() => moveSectionUp(pIndex, sIndex)}
                     onMoveDown={() => moveSectionDown(pIndex, sIndex)}
                     onRemove={() => removeSection(pIndex, sIndex)}
-                    // add question to this section
                     onAddQuestion={() => addQuestionToSection(pIndex, sIndex)}
-                    // reorder / remove child question
                     onMoveQuestionUp={(qIdx) => moveSectionQuestionUp(pIndex, sIndex, qIdx)}
                     onMoveQuestionDown={(qIdx) => moveSectionQuestionDown(pIndex, sIndex, qIdx)}
                     onRemoveQuestion={(qIdx) => removeSectionQuestion(pIndex, sIndex, qIdx)}
                     onUpdateQuestion={(qIdx, updatedQ) =>
                       updateSectionQuestion(pIndex, sIndex, qIdx, updatedQ)
                     }
-                    // NEW: pass the title updater
                     onUpdateTitle={(newTitle) => updateSectionTitle(pIndex, sIndex, newTitle)}
-                    
-                   
                     expandedQuestions={expandedQuestions}
                     toggleQuestion={toggleQuestion}
-                    
                     section={sec}
                     pageIndex={pIndex}
                     sectionIndex={sIndex}
@@ -495,6 +635,7 @@ export default function FormBuilder() {
       })}
 
       <Divider sx={{ my: 3 }} />
+
       <Button variant="contained" disabled={loading} onClick={saveForm}>
         {loading ? 'Saving...' : 'Save Form'}
       </Button>

@@ -339,22 +339,24 @@ export function useHierFormController() {
 
   // ----------------------------------
   // SAVE => create or update
-  // ----------------------------------
-  async function saveForm() {
+  async function saveForm(updatedForm?: FormSchema) {
     setLoading(true);
     setError(null);
+    
+    const payload = updatedForm ?? form; // Use the updated form if provided
+    console.log('Saving form to server =>', payload); // This should log published: true
+    
     try {
-      console.log('Saving form to server =>', form);
       let resp;
-      if (form.id) {
+      if (payload.id) {
         // PUT /forms/:id
-        resp = await axios.put(`http://127.0.0.1:8000/forms/${form.id}`, form);
+        resp = await axios.put(`http://127.0.0.1:8000/forms/${payload.id}`, payload);
       } else {
         // POST /forms
-        resp = await axios.post('http://127.0.0.1:8000/forms', form);
+        resp = await axios.post('http://127.0.0.1:8000/forms', payload);
       }
       console.log('Saved OK =>', resp.data);
-      setForm(resp.data); // store new data, including updated_at
+      setForm(resp.data); // Ensure local state is updated correctly
       alert(`Form saved! ID: ${resp.data.id}`);
     } catch (err: any) {
       console.error('Error saving form:', err);
@@ -363,6 +365,7 @@ export function useHierFormController() {
       setLoading(false);
     }
   }
+  
 
   // Return everything
   return {

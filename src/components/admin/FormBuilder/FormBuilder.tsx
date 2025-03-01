@@ -1,15 +1,19 @@
 /**
  * src/components/admin/FormBuilder/FormBuilder.tsx
  *
- * - If :formId is "new", uses a blank form from useHierFormController.
- * - Otherwise, fetches existing form from GET /forms/:formId.
- * - Shows top-level form fields (title, country, last updated).
- * - Renders pages => unsectioned => sections => questions with skip logic.
+ * If :formId = "new", we use a blank form from useHierFormController.
+ * Otherwise, fetch existing form via GET /forms/:formId.
+ *
+ * Shows:
+ * - Form-level Title & Description
+ * - Publish status (Chip)
+ * - Publish button (always sets published=true)
+ * - Multi-page structure (pages -> sections -> questions)
  */
 
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
 
 import {
   Box,
@@ -22,24 +26,23 @@ import {
   AccordionDetails,
   Divider,
   CircularProgress,
-} from '@mui/material';
+  Chip,
+} from "@mui/material";
 
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import DeleteIcon from "@mui/icons-material/Delete";
 
-// Local components
-import { TipTapEditor } from '../../shared/TipTapEditor';
-import { QuestionAccordion } from './QuestionAccordion';
-import { SectionAccordion } from './SectionAccordion';
+import { TipTapEditor } from "../../shared/TipTapEditor";
+import { QuestionAccordion } from "./QuestionAccordion";
+import { SectionAccordion } from "./SectionAccordion";
 
-// Our custom hook
-import { useHierFormController } from '../../../controllers/useHierFormController';
-import { FormSchema } from '../../../types/formTypes';
+import { useHierFormController } from "../../../controllers/useHierFormController";
+import { FormSchema } from "../../../types/formTypes";
 
-/** Helper to reorder array items by swapping indices. */
+/** Helper: swap array items */
 function swap<T>(arr: T[], i: number, j: number) {
   const tmp = arr[i];
   arr[i] = arr[j];
@@ -49,7 +52,6 @@ function swap<T>(arr: T[], i: number, j: number) {
 export default function FormBuilder() {
   const { formId } = useParams<{ formId: string }>();
 
-  // Our custom hook
   const {
     form,
     setForm,
@@ -77,16 +79,20 @@ export default function FormBuilder() {
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Expand/collapse state
+  // For expand/collapse logic
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set()
+  );
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(
+    new Set()
+  );
   const [allExpanded, setAllExpanded] = useState(false);
 
-  // If formId != "new", fetch existing form from the backend
+  // 1) If formId != "new", fetch existing form
   useEffect(() => {
-    if (!formId || formId === 'new') {
-      console.log('New form => skip fetching existing');
+    if (!formId || formId === "new") {
+      console.log("Creating a new form => skip fetch");
       return;
     }
     setFetching(true);
@@ -96,31 +102,30 @@ export default function FormBuilder() {
       .get(`http://127.0.0.1:8000/forms/${formId}`)
       .then((res) => {
         const apiData = res.data;
-        console.log('Fetched existing form:', apiData);
+        console.log("Fetched existing form:", apiData);
 
-        // Build a fully "inflated" form object
+        // Build an "inflated" object if needed
         const inflated: FormSchema = {
           id: apiData.id,
-          title: apiData.title || 'Untitled from server',
-          description: apiData.description || '',
+          title: apiData.title || "",
+          description: apiData.description || "",
           published: apiData.published || false,
-          country: apiData.country || '',
-          created_by: apiData.created_by || '',
+          country: apiData.country || "",
+          created_by: apiData.created_by || "",
           updated_at: apiData.updated_at || null,
           pages: apiData.pages ?? [
             {
-              title: 'Page 1',
-              description: '',
+              title: "Page 1",
+              description: "",
               unsectioned: [],
               sections: [],
             },
           ],
         };
-
         setForm(inflated);
       })
       .catch((err) => {
-        console.error('Error fetching form:', err);
+        console.error("Error fetching form:", err);
         setFetchError(err.response?.data?.detail || err.message);
       })
       .finally(() => {
@@ -131,9 +136,7 @@ export default function FormBuilder() {
   if (fetching) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="h6">
-          Loading form (ID: {formId})...
-        </Typography>
+        <Typography variant="h6">Loading form (ID: {formId})...</Typography>
         <CircularProgress sx={{ mt: 2 }} />
       </Box>
     );
@@ -149,7 +152,7 @@ export default function FormBuilder() {
 
   const pages = form?.pages ?? [];
 
-  // Expand/Collapse All
+  // 2) Expand/Collapse All
   const handleExpandCollapseAll = () => {
     setAllExpanded(!allExpanded);
     if (!allExpanded) {
@@ -180,79 +183,115 @@ export default function FormBuilder() {
       setExpandedSections(sSet);
       setExpandedQuestions(qSet);
     } else {
-      // collapse all
       setExpandedPages(new Set());
       setExpandedSections(new Set());
       setExpandedQuestions(new Set());
     }
   };
 
-  // Render
+  /**
+   * 3) Publish button => always sets form.published = true,
+   * then calls saveForm so it sends { published: true } to backend.
+   */
+  const handlePublish = async () => {
+    const updatedForm = { ...form, published: true }; // Ensure we set published to true
+    setForm(updatedForm); // Update state
+    console.log("Sending to server:", updatedForm); // Should show published: true
+    await saveForm(updatedForm); // Send the correct object to the server
+  };
+
+  // 4) Render
+  // The heading: use form.title or fallback to "New form"
+  const headingTitle = form.title?.trim() ? form.title : "New form";
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Multi-Page Form Builder (with advanced question support)
-      </Typography>
       {error && <Typography color="error">{error}</Typography>}
 
-      {/* Show top-level form info */}
-      <Box sx={{ mb: 2 }}>
-        {/* ID */}
-        {form.id && (
-          <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>Form ID:</strong> {form.id}
-          </Typography>
+      {/* Title Row with Published Chip */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+        <Typography variant="h4" sx={{ mb: 0 }}>
+          {headingTitle}
+        </Typography>
+        {form.published ? (
+          <Chip label="Published" color="success" />
+        ) : (
+          <Chip label="Draft" color="default" />
         )}
-
-        {/* Last Updated */}
-        {form.updated_at && (
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Last Updated:{' '}
-            {new Date(form.updated_at).toLocaleString()}
-          </Typography>
-        )}
-
-        {/* Title + Country => editable */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <TextField
-            label="Form Title"
-            value={form.title}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                title: e.target.value,
-              }))
-            }
-            fullWidth
-          />
-          <TextField
-            label="Country"
-            value={form.country ?? ''}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                country: e.target.value,
-              }))
-            }
-            fullWidth
-          />
-        </Box>
       </Box>
 
-      <Button variant="contained" onClick={addPage} sx={{ mr: 2 }}>
-        Add Page
-      </Button>
-      <Button variant="outlined" onClick={handleExpandCollapseAll} sx={{ mr: 2 }}>
-        {allExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        {allExpanded ? 'Collapse All' : 'Expand All'}
-      </Button>
-      <Button variant="contained" color="primary" disabled={loading} onClick={saveForm}>
-        {loading ? 'Saving...' : 'Save Form'
-        }
-      </Button>
+      {/* If we have an ID, show it. Also updated_at */}
+      {form.id && (
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          ID: {form.id}
+        </Typography>
+      )}
+      {form.updated_at && (
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          Last Updated: {new Date(form.updated_at).toLocaleString()}
+        </Typography>
+      )}
 
-      <Divider sx={{ my: 2 }} />
+      {/* Form-level description => TipTap */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Form Description:
+        </Typography>
+        <TipTapEditor
+          value={form.description}
+          onChange={(val) => setForm((prev) => ({ ...prev, description: val }))}
+        />
+      </Box>
 
+      {/* Title, country, etc. */}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
+        <TextField
+          label="Form Title"
+          value={form.title}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, title: e.target.value }))
+          }
+        />
+        <TextField
+          label="Country"
+          value={form.country ?? ""}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, country: e.target.value }))
+          }
+        />
+      </Box>
+
+      {/* Buttons */}
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+        <Button variant="contained" onClick={addPage}>
+          Add Page
+        </Button>
+        <Button variant="outlined" onClick={handleExpandCollapseAll}>
+          {allExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          {allExpanded ? "Collapse All" : "Expand All"}
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          disabled={loading}
+          onClick={() => saveForm()} // Call saveForm without modifying `published`
+        >
+          {loading ? "Saving..." : "Save Form"}
+        </Button>
+        {/* <--- "Publish" always sets published=true ---> */}
+        <Button
+          variant="outlined"
+          color="success"
+          onClick={handlePublish}
+          disabled={loading}
+        >
+          Publish
+        </Button>
+      </Box>
+
+      <Divider sx={{ mb: 3 }} />
+
+      {/* Render each page */}
       {pages.map((page, pIndex) => {
         const pageKey = `page-${pIndex}`;
         const pageExpanded = expandedPages.has(pIndex);
@@ -264,7 +303,8 @@ export default function FormBuilder() {
             onChange={() => {
               setExpandedPages((prev) => {
                 const newSet = new Set(prev);
-                newSet.has(pIndex) ? newSet.delete(pIndex) : newSet.add(pIndex);
+                if (newSet.has(pIndex)) newSet.delete(pIndex);
+                else newSet.add(pIndex);
                 return newSet;
               });
             }}
@@ -272,7 +312,7 @@ export default function FormBuilder() {
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography>
-                Page {pIndex + 1}: {page.title || '(untitled)'}
+                Page {pIndex + 1}: {page.title || "(untitled)"}
               </Typography>
             </AccordionSummary>
 
@@ -282,7 +322,7 @@ export default function FormBuilder() {
                 Page Title:
               </Typography>
               <input
-                style={{ width: '100%', marginBottom: '1rem' }}
+                style={{ width: "100%", marginBottom: "1rem" }}
                 value={page.title}
                 onChange={(e) => {
                   setForm((prev) => {
@@ -296,7 +336,7 @@ export default function FormBuilder() {
                 }}
               />
 
-              {/* Page Description with TipTap */}
+              {/* Page Description (TipTap) */}
               <Typography variant="subtitle2" sx={{ mt: 1 }}>
                 Page Description:
               </Typography>
@@ -315,7 +355,7 @@ export default function FormBuilder() {
               />
 
               {/* Reorder / remove page */}
-              <Box sx={{ display: 'flex', gap: 1, my: 2 }}>
+              <Box sx={{ display: "flex", gap: 1, my: 2 }}>
                 <IconButton onClick={() => movePageUp(pIndex)}>
                   <ArrowUpwardIcon />
                 </IconButton>
@@ -327,14 +367,17 @@ export default function FormBuilder() {
                 </IconButton>
               </Box>
 
-              <Button onClick={() => addUnsectionedQuestion(pIndex)} sx={{ mr: 2 }}>
+              <Button
+                onClick={() => addUnsectionedQuestion(pIndex)}
+                sx={{ mr: 2 }}
+              >
                 Add Unsectioned Q
               </Button>
               <Button onClick={() => addSection(pIndex)}>Add Section</Button>
 
               <Divider sx={{ my: 2 }} />
 
-              {/* Unsectioned Questions */}
+              {/* UNSECTIONED QUESTIONS */}
               {page.unsectioned.map((question, qIndex) => {
                 const qKey = `p${pIndex}-Uq${qIndex}`;
                 const numbering = `${pIndex + 1}.${qIndex + 1}`;
@@ -349,7 +392,9 @@ export default function FormBuilder() {
                     onToggle={() => {
                       setExpandedQuestions((prev) => {
                         const newSet = new Set(prev);
-                        newSet.has(qKey) ? newSet.delete(qKey) : newSet.add(qKey);
+                        newSet.has(qKey)
+                          ? newSet.delete(qKey)
+                          : newSet.add(qKey);
                         return newSet;
                       });
                     }}
@@ -365,7 +410,9 @@ export default function FormBuilder() {
                       });
                     }}
                     onMoveUp={() => moveUnsectionedQuestionUp(pIndex, qIndex)}
-                    onMoveDown={() => moveUnsectionedQuestionDown(pIndex, qIndex)}
+                    onMoveDown={() =>
+                      moveUnsectionedQuestionDown(pIndex, qIndex)
+                    }
                     onRemove={() => removeUnsectionedQuestion(pIndex, qIndex)}
                   />
                 );
@@ -373,7 +420,7 @@ export default function FormBuilder() {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* Sections */}
+              {/* SECTIONS */}
               {page.sections.map((sec, sIndex) => {
                 const secKey = `p${pIndex}-s${sIndex}`;
                 const secExpanded = expandedSections.has(secKey);
@@ -385,17 +432,27 @@ export default function FormBuilder() {
                     onToggle={() => {
                       setExpandedSections((prev) => {
                         const newSet = new Set(prev);
-                        newSet.has(secKey) ? newSet.delete(secKey) : newSet.add(secKey);
+                        if (newSet.has(secKey)) newSet.delete(secKey);
+                        else newSet.add(secKey);
                         return newSet;
                       });
                     }}
+                    // reorder / remove entire section
                     onMoveUp={() => moveSectionUp(pIndex, sIndex)}
                     onMoveDown={() => moveSectionDown(pIndex, sIndex)}
                     onRemove={() => removeSection(pIndex, sIndex)}
+                    // add question
                     onAddQuestion={() => addQuestionToSection(pIndex, sIndex)}
-                    onMoveQuestionUp={(qIdx) => moveSectionQuestionUp(pIndex, sIndex, qIdx)}
-                    onMoveQuestionDown={(qIdx) => moveSectionQuestionDown(pIndex, sIndex, qIdx)}
-                    onRemoveQuestion={(qIdx) => removeSectionQuestion(pIndex, sIndex, qIdx)}
+                    // reorder / remove child questions
+                    onMoveQuestionUp={(qIdx) =>
+                      moveSectionQuestionUp(pIndex, sIndex, qIdx)
+                    }
+                    onMoveQuestionDown={(qIdx) =>
+                      moveSectionQuestionDown(pIndex, sIndex, qIdx)
+                    }
+                    onRemoveQuestion={(qIdx) =>
+                      removeSectionQuestion(pIndex, sIndex, qIdx)
+                    }
                     onUpdateQuestion={(qIdx, updQ) => {
                       setForm((prev) => {
                         const pagesCopy = [...prev.pages];
@@ -426,7 +483,8 @@ export default function FormBuilder() {
                     toggleQuestion={(qKey: string) => {
                       setExpandedQuestions((prev) => {
                         const newSet = new Set(prev);
-                        newSet.has(qKey) ? newSet.delete(qKey) : newSet.add(qKey);
+                        if (newSet.has(qKey)) newSet.delete(qKey);
+                        else newSet.add(qKey);
                         return newSet;
                       });
                     }}
@@ -443,8 +501,13 @@ export default function FormBuilder() {
 
       <Divider sx={{ my: 3 }} />
 
-      <Button variant="contained" disabled={loading} onClick={saveForm}>
-        {loading ? 'Saving...' : 'Save Form'}
+      <Button
+        variant="contained"
+        color="primary"
+        disabled={loading}
+        onClick={() => saveForm()} // Call saveForm without modifying `published`
+      >
+        {loading ? "Saving..." : "Save Form"}
       </Button>
     </Box>
   );

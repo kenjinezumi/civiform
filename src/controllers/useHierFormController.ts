@@ -218,6 +218,8 @@ export function useHierFormController() {
         placeholder: '',
         helpText: '',
         choices: [],
+        ratingMin: undefined,
+        ratingMax: undefined,
       };
 
       secs[sectionIndex] = {

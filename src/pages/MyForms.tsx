@@ -1,10 +1,9 @@
 /**
  * src/pages/MyForms.tsx
  *
- * Lists all forms returned by GET /forms,
- * with a search box, sort dropdown, create button,
- * and "edit" => navigate to FormBuilder
+ * Full code with each form tile at full width (one item per row).
  */
+
 import React, { useEffect, useState, ChangeEvent } from 'react';
 import {
   Typography,
@@ -24,19 +23,16 @@ import {
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-// MUI icons
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-// Minimal interface for what /forms returns
 interface FormData {
   id: number;
   title: string;
   description?: string;
   published?: boolean;
-  updated_at?: string; // last updated
-  country?: string;    // new
-  // etc.
+  updated_at?: string;
+  country?: string;
 }
 
 type SortOption = 'title-asc' | 'title-desc' | 'date-latest' | 'date-oldest';
@@ -52,13 +48,11 @@ export default function MyForms() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('title-asc');
 
-  // Fetch forms
   useEffect(() => {
     const fetchForms = async () => {
       setLoading(true);
       setError(null);
       try {
-        // e.g. GET /forms
         const res = await axios.get('http://127.0.0.1:8000/forms');
         setForms(res.data);
       } catch (err: any) {
@@ -70,18 +64,15 @@ export default function MyForms() {
     fetchForms();
   }, []);
 
-  // Edit => /admin/forms/builder/:id
   const handleEditClick = (formId: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     navigate(`/admin/forms/builder/${formId}`);
   };
 
-  // Delete => might do patch or delete
   const handleDeleteClick = async (formId: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this form?')) return;
     try {
-      // example real delete
       await axios.delete(`http://127.0.0.1:8000/forms/${formId}`);
       setForms((prev) => prev.filter((f) => f.id !== formId));
     } catch (err: any) {
@@ -99,13 +90,10 @@ export default function MyForms() {
     setSortOption(e.target.value as SortOption);
   };
 
-  // Filter
-  const filteredForms = forms.filter((f) =>
+  const filtered = forms.filter((f) =>
     f.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Sort
-  const sortedForms = [...filteredForms].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     switch (sortOption) {
       case 'title-asc':
         return a.title.localeCompare(b.title);
@@ -122,9 +110,19 @@ export default function MyForms() {
     }
   });
 
+  if (loading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>My Forms</Typography>
+      <Typography variant="h4" gutterBottom>
+        My Forms
+      </Typography>
 
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField
@@ -144,23 +142,19 @@ export default function MyForms() {
           </Select>
         </FormControl>
 
-        {/* Button to create a brand new form */}
         <Button variant="contained" onClick={() => navigate('/admin/forms/builder/new')}>
           Create New Form
         </Button>
       </Box>
 
-      {loading && <CircularProgress />}
       {error && <Alert severity="error">{error}</Alert>}
 
-      <Grid container spacing={2} sx={{ mt: 2 }}>
-        {sortedForms.length === 0 ? (
-          <Grid item xs={12}>
-            <Typography>No forms found.</Typography>
-          </Grid>
-        ) : (
-          sortedForms.map((f) => (
-            <Grid key={f.id} item xs={12} sm={6} md={4} lg={3}>
+      {sorted.length === 0 ? (
+        <Typography>No forms match your search.</Typography>
+      ) : (
+        <Grid container spacing={2} sx={{ mt: 2 }}>
+          {sorted.map((form) => (
+            <Grid key={form.id} item xs={12}>
               <Box
                 sx={{
                   p: 2,
@@ -170,40 +164,45 @@ export default function MyForms() {
                   transition: '0.3s',
                   '&:hover': { backgroundColor: '#f7f7f7' },
                 }}
-                onClick={() => handleEditClick(f.id)}
+                onClick={() => handleEditClick(form.id)}
               >
                 <Typography variant="h6">
-                  {f.title} (ID: {f.id})
+                  {form.title} (ID: {form.id})
                 </Typography>
-                {f.description && (
+                {form.description && (
                   <Typography variant="body2" color="text.secondary">
-                    {f.description}
+                    {form.description}
                   </Typography>
                 )}
-                {/* Show country, updated_at if present */}
-                {f.country && (
+                {form.country && (
                   <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Country:</strong> {f.country}
+                    <strong>Country:</strong> {form.country}
                   </Typography>
                 )}
-                {f.updated_at && (
+                {form.updated_at && (
                   <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                    Last Updated: {new Date(f.updated_at).toLocaleString()}
+                    Last Updated:{' '}
+                    {new Date(form.updated_at).toLocaleString()}
                   </Typography>
                 )}
+
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
-                  <IconButton size="small" onClick={(e) => handleEditClick(f.id, e)}>
+                  <IconButton size="small" onClick={(e) => handleEditClick(form.id, e)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton size="small" color="error" onClick={(e) => handleDeleteClick(f.id, e)}>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={(e) => handleDeleteClick(form.id, e)}
+                  >
                     <DeleteIcon />
                   </IconButton>
                 </Box>
               </Box>
             </Grid>
-          ))
-        )}
-      </Grid>
+          ))}
+        </Grid>
+      )}
     </Box>
   );
 }

@@ -1,9 +1,3 @@
-/**
- * src/components/admin/FormBuilder/QuestionAccordion.tsx
- *
- * Renders a single question, including skip-logic editing.
- */
-
 import React from 'react';
 import {
   Accordion,
@@ -20,7 +14,6 @@ import {
   IconButton,
   Divider,
 } from '@mui/material';
-
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
@@ -28,6 +21,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 import { Question, SkipLogicCondition, AdvancedQuestionType } from '../../../types/formTypes';
 import { SkipLogicFields } from './SkipLogicFields';
+import { ChoicesEditor } from './ChoicesEditor';
 
 interface QuestionAccordionProps {
   question: Question;
@@ -50,20 +44,12 @@ export function QuestionAccordion({
   onMoveDown,
   onRemove,
 }: QuestionAccordionProps) {
-  // If skipLogic is null, we provide a default object
+  // If skipLogic is missing, provide default
   const skip: SkipLogicCondition = question.skipLogic ?? {
     referenceQuestionIndex: 0,
     operator: '==',
     value: '',
     action: 'show',
-  };
-
-  // Handler to push updated skip logic to the parent
-  const handleSkipChange = (updatedSkip: SkipLogicCondition) => {
-    onUpdate({
-      ...question,
-      skipLogic: updatedSkip,
-    });
   };
 
   return (
@@ -75,7 +61,7 @@ export function QuestionAccordion({
       </AccordionSummary>
 
       <AccordionDetails>
-        {/* Basic question fields */}
+        {/* Label */}
         <TextField
           label="Question Label"
           value={question.label}
@@ -84,16 +70,18 @@ export function QuestionAccordion({
           sx={{ mb: 2 }}
         />
 
+        {/* Type */}
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel>Question Type</InputLabel>
           <Select
             label="Question Type"
             value={question.type}
-            onChange={(e) => onUpdate({
-              ...question,
-              // If the user picks 'section', override to 'text' or disallow
-              type: e.target.value === 'section' ? 'text' : (e.target.value as AdvancedQuestionType),
-            })}
+            onChange={(e) =>
+              onUpdate({
+                ...question,
+                type: e.target.value as AdvancedQuestionType,
+              })
+            }
           >
             <MenuItem value="text">Text</MenuItem>
             <MenuItem value="radio">Radio</MenuItem>
@@ -103,6 +91,7 @@ export function QuestionAccordion({
           </Select>
         </FormControl>
 
+        {/* Required Checkbox */}
         <FormControlLabel
           control={
             <Checkbox
@@ -117,15 +106,24 @@ export function QuestionAccordion({
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Skip Logic Section */}
+        {/* Additional Fields for skip logic or rating or choices */}
         <Typography variant="subtitle2" sx={{ mb: 1 }}>
           Skip Logic
         </Typography>
-        <SkipLogicFields skip={skip} onChange={handleSkipChange} />
+        <SkipLogicFields
+          skip={skip}
+          onChange={(updatedSkip) => onUpdate({ ...question, skipLogic: updatedSkip })}
+        />
+
+        {/* If question.type is 'radio', 'checkbox', 'select', or 'rating', we show extra UI */}
+        <ChoicesEditor
+          question={question}
+          onUpdate={(updQ) => onUpdate(updQ)}
+        />
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Reorder / Remove Buttons */}
+        {/* Reorder / remove */}
         <IconButton onClick={onMoveUp} sx={{ mr: 1 }}>
           <ArrowUpwardIcon />
         </IconButton>

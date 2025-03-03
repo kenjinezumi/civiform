@@ -9,10 +9,11 @@
  * - Publish status (Chip)
  * - Publish button (always sets published=true)
  * - Multi-page structure (pages -> sections -> questions)
+ * - **Preview** button that navigates to /forms/preview/:formId
  */
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import {
@@ -42,15 +43,9 @@ import { SectionAccordion } from "./SectionAccordion";
 import { useHierFormController } from "../../../controllers/useHierFormController";
 import { FormSchema } from "../../../types/formTypes";
 
-/** Helper: swap array items */
-function swap<T>(arr: T[], i: number, j: number) {
-  const tmp = arr[i];
-  arr[i] = arr[j];
-  arr[j] = tmp;
-}
-
 export default function FormBuilder() {
   const { formId } = useParams<{ formId: string }>();
+  const navigate = useNavigate();
 
   const {
     form,
@@ -73,23 +68,19 @@ export default function FormBuilder() {
     removeSectionQuestion,
     moveSectionQuestionUp,
     moveSectionQuestionDown,
-    saveForm,
+    saveForm, // our save function
   } = useHierFormController();
 
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // For expand/collapse logic
+  // Expand/collapse logic
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set()
-  );
-  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(
-    new Set()
-  );
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
-  // 1) If formId != "new", fetch existing form
+  // 1) If formId != "new", fetch existing form from the backend
   useEffect(() => {
     if (!formId || formId === "new") {
       console.log("Creating a new form => skip fetch");
@@ -104,7 +95,7 @@ export default function FormBuilder() {
         const apiData = res.data;
         console.log("Fetched existing form:", apiData);
 
-        // Build an "inflated" object if needed
+        // "Inflate" if needed
         const inflated: FormSchema = {
           id: apiData.id,
           title: apiData.title || "",
@@ -128,11 +119,10 @@ export default function FormBuilder() {
         console.error("Error fetching form:", err);
         setFetchError(err.response?.data?.detail || err.message);
       })
-      .finally(() => {
-        setFetching(false);
-      });
+      .finally(() => setFetching(false));
   }, [formId, setForm]);
 
+  // If still fetching data
   if (fetching) {
     return (
       <Box sx={{ p: 3 }}>
@@ -142,6 +132,7 @@ export default function FormBuilder() {
     );
   }
 
+  // If any fetch error
   if (fetchError) {
     return (
       <Box sx={{ p: 3 }}>
@@ -150,7 +141,8 @@ export default function FormBuilder() {
     );
   }
 
-  const pages = form?.pages ?? [];
+  // safe fallback
+  const pages = form.pages ?? [];
 
   // 2) Expand/Collapse All
   const handleExpandCollapseAll = () => {
@@ -160,16 +152,11 @@ export default function FormBuilder() {
       const sSet = new Set<string>();
       const qSet = new Set<string>();
 
-      for (let pIndex = 0; pIndex < pages.length; pIndex++) {
+      pages.forEach((page, pIndex) => {
         pSet.add(pIndex);
-        const page = pages[pIndex];
-
-        // unsectioned
         page.unsectioned.forEach((_, qIndex) => {
           qSet.add(`p${pIndex}-Uq${qIndex}`);
         });
-
-        // sections
         page.sections.forEach((section, sIndex) => {
           const secKey = `p${pIndex}-s${sIndex}`;
           sSet.add(secKey);
@@ -177,50 +164,55 @@ export default function FormBuilder() {
             qSet.add(`p${pIndex}-s${sIndex}-q${qqIndex}`);
           });
         });
-      }
+      });
 
       setExpandedPages(pSet);
       setExpandedSections(sSet);
       setExpandedQuestions(qSet);
     } else {
+      // collapse all
       setExpandedPages(new Set());
       setExpandedSections(new Set());
       setExpandedQuestions(new Set());
     }
   };
 
-  /**
-   * 3) Publish button => always sets form.published = true,
-   * then calls saveForm so it sends { published: true } to backend.
-   */
+  // 3) Publish => sets published = true, then calls save
   const handlePublish = async () => {
-    const updatedForm = { ...form, published: true }; // Ensure we set published to true
-    setForm(updatedForm); // Update state
-    console.log("Sending to server:", updatedForm); // Should show published: true
-    await saveForm(updatedForm); // Send the correct object to the server
+    const updatedForm = { ...form, published: true };
+    setForm(updatedForm);
+    console.log("Publishing =>", updatedForm);
+    await saveForm(updatedForm); // pass override
   };
 
-  // 4) Render
-  // The heading: use form.title or fallback to "New form"
+  // 4) Preview => if no ID, we must create it first, then navigate
+  const handlePreview = async () => {
+    if (!form.id) {
+      const newForm = await saveForm(form);
+      if (newForm?.id) {
+        navigate(`/forms/preview/${newForm.id}`);
+      }
+    } else {
+      navigate(`/forms/preview/${form.id}`);
+    }
+  };
+
+  // The main heading
   const headingTitle = form.title?.trim() ? form.title : "New form";
 
   return (
     <Box sx={{ p: 3 }}>
       {error && <Typography color="error">{error}</Typography>}
 
-      {/* Title Row with Published Chip */}
+      {/* Title row & published chip */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
         <Typography variant="h4" sx={{ mb: 0 }}>
           {headingTitle}
         </Typography>
-        {form.published ? (
-          <Chip label="Published" color="success" />
-        ) : (
-          <Chip label="Draft" color="default" />
-        )}
+        {form.published ? <Chip label="Published" color="success" /> : <Chip label="Draft" />}
       </Box>
 
-      {/* If we have an ID, show it. Also updated_at */}
+      {/* ID & updated_at */}
       {form.id && (
         <Typography variant="body2" sx={{ mb: 1 }}>
           ID: {form.id}
@@ -243,21 +235,17 @@ export default function FormBuilder() {
         />
       </Box>
 
-      {/* Title, country, etc. */}
+      {/* Title & Country */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
         <TextField
           label="Form Title"
           value={form.title}
-          onChange={(e) =>
-            setForm((prev) => ({ ...prev, title: e.target.value }))
-          }
+          onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
         />
         <TextField
           label="Country"
           value={form.country ?? ""}
-          onChange={(e) =>
-            setForm((prev) => ({ ...prev, country: e.target.value }))
-          }
+          onChange={(e) => setForm((prev) => ({ ...prev, country: e.target.value }))}
         />
       </Box>
 
@@ -274,18 +262,15 @@ export default function FormBuilder() {
           variant="contained"
           color="primary"
           disabled={loading}
-          onClick={() => saveForm()} // Call saveForm without modifying `published`
+          onClick={() => saveForm()} // normal save with local form
         >
           {loading ? "Saving..." : "Save Form"}
         </Button>
-        {/* <--- "Publish" always sets published=true ---> */}
-        <Button
-          variant="outlined"
-          color="success"
-          onClick={handlePublish}
-          disabled={loading}
-        >
+        <Button variant="outlined" color="success" disabled={loading} onClick={handlePublish}>
           Publish
+        </Button>
+        <Button variant="outlined" color="secondary" disabled={loading} onClick={handlePreview}>
+          Preview
         </Button>
       </Box>
 
@@ -327,16 +312,13 @@ export default function FormBuilder() {
                 onChange={(e) => {
                   setForm((prev) => {
                     const pagesCopy = [...prev.pages];
-                    pagesCopy[pIndex] = {
-                      ...pagesCopy[pIndex],
-                      title: e.target.value,
-                    };
+                    pagesCopy[pIndex] = { ...pagesCopy[pIndex], title: e.target.value };
                     return { ...prev, pages: pagesCopy };
                   });
                 }}
               />
 
-              {/* Page Description (TipTap) */}
+              {/* Page Description */}
               <Typography variant="subtitle2" sx={{ mt: 1 }}>
                 Page Description:
               </Typography>
@@ -345,10 +327,7 @@ export default function FormBuilder() {
                 onChange={(val) => {
                   setForm((prev) => {
                     const pagesCopy = [...prev.pages];
-                    pagesCopy[pIndex] = {
-                      ...pagesCopy[pIndex],
-                      description: val,
-                    };
+                    pagesCopy[pIndex] = { ...pagesCopy[pIndex], description: val };
                     return { ...prev, pages: pagesCopy };
                   });
                 }}
@@ -367,10 +346,7 @@ export default function FormBuilder() {
                 </IconButton>
               </Box>
 
-              <Button
-                onClick={() => addUnsectionedQuestion(pIndex)}
-                sx={{ mr: 2 }}
-              >
+              <Button onClick={() => addUnsectionedQuestion(pIndex)} sx={{ mr: 2 }}>
                 Add Unsectioned Q
               </Button>
               <Button onClick={() => addSection(pIndex)}>Add Section</Button>
@@ -392,9 +368,7 @@ export default function FormBuilder() {
                     onToggle={() => {
                       setExpandedQuestions((prev) => {
                         const newSet = new Set(prev);
-                        newSet.has(qKey)
-                          ? newSet.delete(qKey)
-                          : newSet.add(qKey);
+                        newSet.has(qKey) ? newSet.delete(qKey) : newSet.add(qKey);
                         return newSet;
                       });
                     }}
@@ -410,9 +384,7 @@ export default function FormBuilder() {
                       });
                     }}
                     onMoveUp={() => moveUnsectionedQuestionUp(pIndex, qIndex)}
-                    onMoveDown={() =>
-                      moveUnsectionedQuestionDown(pIndex, qIndex)
-                    }
+                    onMoveDown={() => moveUnsectionedQuestionDown(pIndex, qIndex)}
                     onRemove={() => removeUnsectionedQuestion(pIndex, qIndex)}
                   />
                 );
@@ -437,22 +409,13 @@ export default function FormBuilder() {
                         return newSet;
                       });
                     }}
-                    // reorder / remove entire section
                     onMoveUp={() => moveSectionUp(pIndex, sIndex)}
                     onMoveDown={() => moveSectionDown(pIndex, sIndex)}
                     onRemove={() => removeSection(pIndex, sIndex)}
-                    // add question
                     onAddQuestion={() => addQuestionToSection(pIndex, sIndex)}
-                    // reorder / remove child questions
-                    onMoveQuestionUp={(qIdx) =>
-                      moveSectionQuestionUp(pIndex, sIndex, qIdx)
-                    }
-                    onMoveQuestionDown={(qIdx) =>
-                      moveSectionQuestionDown(pIndex, sIndex, qIdx)
-                    }
-                    onRemoveQuestion={(qIdx) =>
-                      removeSectionQuestion(pIndex, sIndex, qIdx)
-                    }
+                    onMoveQuestionUp={(qIdx) => moveSectionQuestionUp(pIndex, sIndex, qIdx)}
+                    onMoveQuestionDown={(qIdx) => moveSectionQuestionDown(pIndex, sIndex, qIdx)}
+                    onRemoveQuestion={(qIdx) => removeSectionQuestion(pIndex, sIndex, qIdx)}
                     onUpdateQuestion={(qIdx, updQ) => {
                       setForm((prev) => {
                         const pagesCopy = [...prev.pages];
@@ -501,12 +464,7 @@ export default function FormBuilder() {
 
       <Divider sx={{ my: 3 }} />
 
-      <Button
-        variant="contained"
-        color="primary"
-        disabled={loading}
-        onClick={() => saveForm()} // Call saveForm without modifying `published`
-      >
+      <Button variant="contained" color="primary" disabled={loading} onClick={() => saveForm(form)}>
         {loading ? "Saving..." : "Save Form"}
       </Button>
     </Box>

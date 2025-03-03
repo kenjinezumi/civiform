@@ -7,6 +7,7 @@ import Home from '../pages/Home';
 import About from '../pages/About';
 import Login from '../pages/Login';
 import PublicForm from '../components/public/PublicForm';
+import FormPreview from '../components/public/FormPreview'; // <--- new preview wizard
 
 // Admin / Protected
 import AdminDashboard from '../pages/AdminDashboard';
@@ -14,7 +15,7 @@ import FormBuilder from '../components/admin/FormBuilder/FormBuilder';
 import MyForms from '../pages/MyForms';
 import CreateForm from '../pages/CreateForm';
 
-// NEW: PartnerManager page for creating multiple URLs for each partner
+// PartnerManager
 import PartnerManager from '../pages/PartnerManager';
 
 // Layout & Auth
@@ -25,7 +26,8 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes (wrapped in SiteLayout so they get the header/footer) */}
+
+        {/* Public routes */}
         <Route
           path="/"
           element={
@@ -42,6 +44,8 @@ function AppRoutes() {
             </SiteLayout>
           }
         />
+
+        {/* Example "public" form route */}
         <Route
           path="/forms/:formId"
           element={
@@ -51,10 +55,20 @@ function AppRoutes() {
           }
         />
 
-        {/* Login route (no layout, or add if you wish) */}
+        {/* NEW Preview route for wizard */}
+        <Route
+          path="/forms/preview/:formId"
+          element={
+            <SiteLayout>
+              <FormPreview />
+            </SiteLayout>
+          }
+        />
+
+        {/* Login route */}
         <Route path="/login" element={<Login />} />
 
-        {/* Admin routes (RequireAuth) */}
+        {/* Admin routes */}
         <Route
           path="/admin"
           element={
@@ -66,7 +80,7 @@ function AppRoutes() {
           }
         />
 
-        {/* A route for building or editing a form, optionally with :formId */}
+        {/* Form Builder (admin) */}
         <Route
           path="/admin/forms/builder"
           element={
@@ -88,7 +102,7 @@ function AppRoutes() {
           }
         />
 
-        {/* My Forms (list of forms) */}
+        {/* MyForms, CreateForm, etc. */}
         <Route
           path="/my-forms"
           element={
@@ -99,8 +113,6 @@ function AppRoutes() {
             </RequireAuth>
           }
         />
-
-        {/* Create a brand-new form */}
         <Route
           path="/admin/forms/create"
           element={
@@ -112,7 +124,7 @@ function AppRoutes() {
           }
         />
 
-        {/* NEW: Partner Manager route for multiple partner URLs */}
+        {/* Partner manager */}
         <Route
           path="/partner-manager"
           element={

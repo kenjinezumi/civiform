@@ -37,6 +37,7 @@ export type AdvancedQuestionType =
   | 'section';
 
   export interface Question {
+    id?: number;                // so we can identify question uniquely
     label: string;
     type: string;            // e.g. 'text', 'rating', 'radio', etc.
     required: boolean;
@@ -50,6 +51,7 @@ export type AdvancedQuestionType =
 
 /** A section with multiple questions */
 export interface Section {
+  id?: number;                // so we can identify question uniquely
   title: string;
   questions: Question[];
 }

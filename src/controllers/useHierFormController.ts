@@ -5,8 +5,8 @@
  * Includes advanced skip logic, rating, etc. Also handles create/update via axios.
  */
 
-import { useState } from 'react';
-import axios from 'axios';
+import { useState } from "react";
+import axios from "axios";
 import {
   FormSchema,
   Page,
@@ -14,7 +14,7 @@ import {
   Question,
   AdvancedQuestionType,
   SkipLogicCondition,
-} from '../types/formTypes';
+} from "../types/formTypes";
 
 /** Helper to swap array items (for reorder logic) */
 function swap<T>(arr: T[], i: number, j: number) {
@@ -26,16 +26,16 @@ function swap<T>(arr: T[], i: number, j: number) {
 export function useHierFormController() {
   // Local form state: default to a new form with one blank page
   const [form, setForm] = useState<FormSchema>({
-    title: 'My Multi-Page Form',
-    description: 'A multi-page form with sections',
+    title: "My Multi-Page Form",
+    description: "A multi-page form with sections",
     published: false,
-    country: '',
-    created_by: '',
+    country: "",
+    created_by: "",
     updated_at: null,
     pages: [
       {
-        title: 'Page 1',
-        description: '',
+        title: "Page 1",
+        description: "",
         unsectioned: [],
         sections: [],
       },
@@ -53,7 +53,7 @@ export function useHierFormController() {
       const newPages = [...prev.pages];
       newPages.push({
         title: `Page ${newPages.length + 1}`,
-        description: '',
+        description: "",
         unsectioned: [],
         sections: [],
       });
@@ -96,11 +96,11 @@ export function useHierFormController() {
       const pageObj = { ...pagesCopy[pageIndex] };
 
       const defaultQ: Question = {
-        label: '',
-        type: 'text',
+        label: "",
+        type: "text",
         required: false,
-        placeholder: '',
-        helpText: '',
+        placeholder: "",
+        helpText: "",
         choices: [],
       };
 
@@ -157,7 +157,7 @@ export function useHierFormController() {
       const pageObj = { ...pagesCopy[pageIndex] };
       pageObj.sections = [
         ...pageObj.sections,
-        { title: 'New Section', questions: [] },
+        { title: "New Section", questions: [] },
       ];
       pagesCopy[pageIndex] = pageObj;
       return { ...prev, pages: pagesCopy };
@@ -212,11 +212,11 @@ export function useHierFormController() {
       const secs = [...pageObj.sections];
 
       const defaultQ: Question = {
-        label: '',
-        type: 'text',
+        label: "",
+        type: "text",
         required: false,
-        placeholder: '',
-        helpText: '',
+        placeholder: "",
+        helpText: "",
         choices: [],
         ratingMin: undefined,
         ratingMax: undefined,
@@ -232,7 +232,11 @@ export function useHierFormController() {
     });
   }
 
-  function removeSectionQuestion(pageIndex: number, sectionIndex: number, qIndex: number) {
+  function removeSectionQuestion(
+    pageIndex: number,
+    sectionIndex: number,
+    qIndex: number
+  ) {
     setForm((prev) => {
       const pagesCopy = [...prev.pages];
       const pageObj = { ...pagesCopy[pageIndex] };
@@ -292,11 +296,11 @@ export function useHierFormController() {
       const secs = [...pageObj.sections];
 
       const ratingQ: Question = {
-        label: 'Rate from 1-5',
-        type: 'rating',
+        label: "Rate from 1-5",
+        type: "rating",
         required: false,
-        placeholder: '',
-        helpText: 'Pick a number',
+        placeholder: "",
+        helpText: "Pick a number",
         choices: [],
         ratingMin: 1,
         ratingMax: 5,
@@ -339,69 +343,71 @@ export function useHierFormController() {
 
   // ----------------------------------
   // SAVE => create or update
+  // If user passes an updatedForm, we send that; else we use local `form`.
+  // This logs the payload for debugging.
   async function saveForm(updatedForm?: FormSchema) {
     setLoading(true);
     setError(null);
-    
-    const payload = updatedForm ?? form; // Use the updated form if provided
-    console.log('Saving form to server =>', payload); // This should log published: true
-    
+
+    const payload = updatedForm ?? form; // use override if provided
+    console.log("Saving form to server =>", payload);
+
     try {
       let resp;
       if (payload.id) {
         // PUT /forms/:id
-        resp = await axios.put(`http://127.0.0.1:8000/forms/${payload.id}`, payload);
+        resp = await axios.put(
+          `http://127.0.0.1:8000/forms/${payload.id}`,
+          payload
+        );
       } else {
         // POST /forms
-        resp = await axios.post('http://127.0.0.1:8000/forms', payload);
+        resp = await axios.post("http://127.0.0.1:8000/forms", payload);
       }
-      console.log('Saved OK =>', resp.data);
-      setForm(resp.data); // Ensure local state is updated correctly
+
+      console.log("Saved OK =>", resp.data);
+      setForm(resp.data); // update local state with server result
       alert(`Form saved! ID: ${resp.data.id}`);
+
+      // Return the updated form data if we need to chain
+      return resp.data as FormSchema;
     } catch (err: any) {
-      console.error('Error saving form:', err);
+      console.error("Error saving form:", err);
       setError(err.response?.data?.detail || err.message);
+      return null;
     } finally {
       setLoading(false);
     }
   }
-  
 
-  // Return everything
   return {
     form,
-    setForm, // so the parent can do advanced changes if needed
+    setForm,
     loading,
     error,
-
     // Page-level
     addPage,
     removePage,
     movePageUp,
     movePageDown,
-
     // Unsectioned
     addUnsectionedQuestion,
     removeUnsectionedQuestion,
     moveUnsectionedQuestionUp,
     moveUnsectionedQuestionDown,
-
     // Sections
     addSection,
     removeSection,
     moveSectionUp,
     moveSectionDown,
-
     // Section questions
     addQuestionToSection,
     removeSectionQuestion,
     moveSectionQuestionUp,
     moveSectionQuestionDown,
-
     // Advanced
     addRatingQuestionToSection,
     setSkipLogicOnQuestion,
-
     // Save
     saveForm,
   };

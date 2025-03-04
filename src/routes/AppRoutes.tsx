@@ -8,6 +8,7 @@ import About from '../pages/About';
 import Login from '../pages/Login';
 import PublicForm from '../components/public/PublicForm';
 import FormPreview from '../components/public/FormPreview'; // <--- new preview wizard
+import FormAccessManager from '../pages/FormAccessManager'; 
 
 // Admin / Protected
 import AdminDashboard from '../pages/AdminDashboard';
@@ -119,6 +120,17 @@ function AppRoutes() {
             <RequireAuth>
               <SiteLayout>
                 <CreateForm />
+              </SiteLayout>
+            </RequireAuth>
+          }
+        />
+
+      <Route
+          path="/admin/forms/access/:formId"
+          element={
+            <RequireAuth>
+              <SiteLayout>
+                <FormAccessManager />
               </SiteLayout>
             </RequireAuth>
           }

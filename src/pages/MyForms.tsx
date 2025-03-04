@@ -8,7 +8,7 @@
  * - Filter by "all/published/draft"
  * - Multi-select filter by country
  * - Displays published/draft chip on each tile
- * - Preview, Edit, and Delete actions
+ * - Preview, Edit, Delete, and now "Manage Access" actions
  */
 
 import React, { useEffect, useState, ChangeEvent } from "react";
@@ -36,6 +36,10 @@ import axios from "axios";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+
+// OPTIONAL ICON for Access
+// import LockOpenIcon from "@mui/icons-material/LockOpen"; 
+// or use another relevant icon if you prefer
 
 interface FormData {
   id: number;
@@ -85,6 +89,7 @@ export default function MyForms() {
   }, []);
 
   // --- Handlers ---
+
   const handleEditClick = (formId: number, e?: React.MouseEvent) => {
     e?.stopPropagation();
     navigate(`/admin/forms/builder/${formId}`);
@@ -107,6 +112,12 @@ export default function MyForms() {
     navigate(`/forms/preview/${formId}`);
   };
 
+  // Manage Access -> e.g. /admin/forms/access/:formId
+  const handleManageAccessClick = (formId: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    navigate(`/admin/forms/access/${formId}`);
+  };
+
   // Searching
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -124,7 +135,6 @@ export default function MyForms() {
 
   // Country multi-select filter
   const handleCountryFilterChange = (e: SelectChangeEvent<string[]>) => {
-    // `e.target.value` can be either string or string[], but with multi Select it should be string[]
     setCountryFilter(e.target.value as string[]);
   };
 
@@ -139,7 +149,7 @@ export default function MyForms() {
 
   // Collect distinct country values (non-empty)
   const uniqueCountries = Array.from(
-    new Set(forms.map((f) => f.country).filter(Boolean)) // remove undefined
+    new Set(forms.map((f) => f.country).filter(Boolean))
   ) as string[];
 
   // 1) Filter by title
@@ -313,7 +323,7 @@ export default function MyForms() {
                   </Typography>
                 )}
 
-                {/* Buttons: Preview, Edit, Delete */}
+                {/* Buttons: Preview, Edit, Delete, Manage Access */}
                 <Box
                   sx={{
                     display: "flex",
@@ -329,6 +339,15 @@ export default function MyForms() {
                   >
                     <VisibilityIcon />
                   </IconButton>
+
+                  {/* Manage Access (New) */}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={(e) => handleManageAccessClick(form.id, e)}
+                  >
+                    Manage Access
+                  </Button>
 
                   {/* Edit */}
                   <IconButton

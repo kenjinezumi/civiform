@@ -1,17 +1,6 @@
 /**
  * src/components/admin/FormBuilder/FormBuilder.tsx
- *
- * If :formId = "new", we use a blank form from useHierFormController.
- * Otherwise, fetch existing form via GET /forms/:formId.
- *
- * Shows:
- * - Form-level Title & Description
- * - Publish status (Chip)
- * - Publish button (always sets published=true)
- * - Multi-page structure (pages -> sections -> questions)
- * - **Preview** button that navigates to /forms/preview/:formId
  */
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -39,10 +28,15 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { TipTapEditor } from "../../shared/TipTapEditor";
 import { QuestionAccordion } from "./QuestionAccordion";
 import { SectionAccordion } from "./SectionAccordion";
-
 import { useHierFormController } from "../../../controllers/useHierFormController";
 import { FormSchema } from "../../../types/formTypes";
 
+/**
+ * FormBuilder:
+ *  - Edits or creates a form (pages, sections, questions).
+ *  - If formId != "new", fetch existing form, otherwise create from scratch.
+ *  - Adds a 'due_date' field.
+ */
 export default function FormBuilder() {
   const { formId } = useParams<{ formId: string }>();
   const navigate = useNavigate();
@@ -68,22 +62,22 @@ export default function FormBuilder() {
     removeSectionQuestion,
     moveSectionQuestionUp,
     moveSectionQuestionDown,
-    saveForm, // our save function
+    saveForm, // normal save function from our custom hook
   } = useHierFormController();
 
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Expand/collapse logic
+  // For expand/collapse all
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
-  // 1) If formId != "new", fetch existing form from the backend
+  // 1) If formId != "new", fetch existing from backend
   useEffect(() => {
     if (!formId || formId === "new") {
-      console.log("Creating a new form => skip fetch");
+      console.log("New form => skip fetch");
       return;
     }
     setFetching(true);
@@ -94,8 +88,7 @@ export default function FormBuilder() {
       .then((res) => {
         const apiData = res.data;
         console.log("Fetched existing form:", apiData);
-
-        // "Inflate" if needed
+        // Build "inflated" local object
         const inflated: FormSchema = {
           id: apiData.id,
           title: apiData.title || "",
@@ -104,6 +97,10 @@ export default function FormBuilder() {
           country: apiData.country || "",
           created_by: apiData.created_by || "",
           updated_at: apiData.updated_at || null,
+
+          // NEW: due_date from backend
+          due_date: apiData.due_date || "",
+
           pages: apiData.pages ?? [
             {
               title: "Page 1",
@@ -119,10 +116,12 @@ export default function FormBuilder() {
         console.error("Error fetching form:", err);
         setFetchError(err.response?.data?.detail || err.message);
       })
-      .finally(() => setFetching(false));
+      .finally(() => {
+        setFetching(false);
+      });
   }, [formId, setForm]);
 
-  // If still fetching data
+  // if fetching
   if (fetching) {
     return (
       <Box sx={{ p: 3 }}>
@@ -131,8 +130,7 @@ export default function FormBuilder() {
       </Box>
     );
   }
-
-  // If any fetch error
+  // if error
   if (fetchError) {
     return (
       <Box sx={{ p: 3 }}>
@@ -165,27 +163,24 @@ export default function FormBuilder() {
           });
         });
       });
-
       setExpandedPages(pSet);
       setExpandedSections(sSet);
       setExpandedQuestions(qSet);
     } else {
-      // collapse all
       setExpandedPages(new Set());
       setExpandedSections(new Set());
       setExpandedQuestions(new Set());
     }
   };
 
-  // 3) Publish => sets published = true, then calls save
+  // 3) Publish => sets published = true -> save
   const handlePublish = async () => {
     const updatedForm = { ...form, published: true };
     setForm(updatedForm);
-    console.log("Publishing =>", updatedForm);
-    await saveForm(updatedForm); // pass override
+    await saveForm(updatedForm);
   };
 
-  // 4) Preview => if no ID, we must create it first, then navigate
+  // 4) Preview => if no ID, must first create
   const handlePreview = async () => {
     if (!form.id) {
       const newForm = await saveForm(form);
@@ -204,15 +199,19 @@ export default function FormBuilder() {
     <Box sx={{ p: 3 }}>
       {error && <Typography color="error">{error}</Typography>}
 
-      {/* Title row & published chip */}
+      {/* Heading row w/ published chip */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
         <Typography variant="h4" sx={{ mb: 0 }}>
           {headingTitle}
         </Typography>
-        {form.published ? <Chip label="Published" color="success" /> : <Chip label="Draft" />}
+        {form.published ? (
+          <Chip label="Published" color="success" />
+        ) : (
+          <Chip label="Draft" />
+        )}
       </Box>
 
-      {/* ID & updated_at */}
+      {/* ID & Updated */}
       {form.id && (
         <Typography variant="body2" sx={{ mb: 1 }}>
           ID: {form.id}
@@ -224,7 +223,7 @@ export default function FormBuilder() {
         </Typography>
       )}
 
-      {/* Form-level description => TipTap */}
+      {/* Description -> TipTap */}
       <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle2" sx={{ mb: 1 }}>
           Form Description:
@@ -235,7 +234,7 @@ export default function FormBuilder() {
         />
       </Box>
 
-      {/* Title & Country */}
+      {/* Title, Country, + Due Date */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
         <TextField
           label="Form Title"
@@ -246,6 +245,16 @@ export default function FormBuilder() {
           label="Country"
           value={form.country ?? ""}
           onChange={(e) => setForm((prev) => ({ ...prev, country: e.target.value }))}
+        />
+
+        {/* NEW: Due Date (type='date' or string) */}
+        <TextField
+          label="Due Date"
+          type="date" 
+          // or keep as 'text' if you want
+          InputLabelProps={{ shrink: true }} 
+          value={form.due_date ?? ""}
+          onChange={(e) => setForm((prev) => ({ ...prev, due_date: e.target.value }))}
         />
       </Box>
 
@@ -262,7 +271,7 @@ export default function FormBuilder() {
           variant="contained"
           color="primary"
           disabled={loading}
-          onClick={() => saveForm()} // normal save with local form
+          onClick={() => saveForm()} 
         >
           {loading ? "Saving..." : "Save Form"}
         </Button>
@@ -276,7 +285,7 @@ export default function FormBuilder() {
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Render each page */}
+      {/* Pages */}
       {pages.map((page, pIndex) => {
         const pageKey = `page-${pIndex}`;
         const pageExpanded = expandedPages.has(pIndex);
@@ -312,13 +321,16 @@ export default function FormBuilder() {
                 onChange={(e) => {
                   setForm((prev) => {
                     const pagesCopy = [...prev.pages];
-                    pagesCopy[pIndex] = { ...pagesCopy[pIndex], title: e.target.value };
+                    pagesCopy[pIndex] = {
+                      ...pagesCopy[pIndex],
+                      title: e.target.value,
+                    };
                     return { ...prev, pages: pagesCopy };
                   });
                 }}
               />
 
-              {/* Page Description */}
+              {/* Page Description -> TipTap */}
               <Typography variant="subtitle2" sx={{ mt: 1 }}>
                 Page Description:
               </Typography>
@@ -327,13 +339,16 @@ export default function FormBuilder() {
                 onChange={(val) => {
                   setForm((prev) => {
                     const pagesCopy = [...prev.pages];
-                    pagesCopy[pIndex] = { ...pagesCopy[pIndex], description: val };
+                    pagesCopy[pIndex] = {
+                      ...pagesCopy[pIndex],
+                      description: val,
+                    };
                     return { ...prev, pages: pagesCopy };
                   });
                 }}
               />
 
-              {/* Reorder / remove page */}
+              {/* Reorder / remove */}
               <Box sx={{ display: "flex", gap: 1, my: 2 }}>
                 <IconButton onClick={() => movePageUp(pIndex)}>
                   <ArrowUpwardIcon />
@@ -353,7 +368,7 @@ export default function FormBuilder() {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* UNSECTIONED QUESTIONS */}
+              {/* Unsectioned Questions */}
               {page.unsectioned.map((question, qIndex) => {
                 const qKey = `p${pIndex}-Uq${qIndex}`;
                 const numbering = `${pIndex + 1}.${qIndex + 1}`;
@@ -392,11 +407,10 @@ export default function FormBuilder() {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* SECTIONS */}
+              {/* Sections */}
               {page.sections.map((sec, sIndex) => {
                 const secKey = `p${pIndex}-s${sIndex}`;
                 const secExpanded = expandedSections.has(secKey);
-
                 return (
                   <SectionAccordion
                     key={secKey}
@@ -404,8 +418,11 @@ export default function FormBuilder() {
                     onToggle={() => {
                       setExpandedSections((prev) => {
                         const newSet = new Set(prev);
-                        if (newSet.has(secKey)) newSet.delete(secKey);
-                        else newSet.add(secKey);
+                        if (newSet.has(secKey)) {
+                          newSet.delete(secKey);
+                        } else {
+                          newSet.add(secKey);
+                        }
                         return newSet;
                       });
                     }}
@@ -464,6 +481,7 @@ export default function FormBuilder() {
 
       <Divider sx={{ my: 3 }} />
 
+      {/* Final Save Button */}
       <Button variant="contained" color="primary" disabled={loading} onClick={() => saveForm(form)}>
         {loading ? "Saving..." : "Save Form"}
       </Button>

@@ -4,11 +4,11 @@
  * A page that lists all forms. Each tile is full width (one item per row).
  * Features:
  * - Search by title
- * - Sort by title/date
+ * - Sort by title/date/due_date
  * - Filter by "all/published/draft"
  * - Multi-select filter by country
  * - Displays published/draft chip on each tile
- * - Preview, Edit, Delete, and now "Manage Access" actions
+ * - Preview, Edit, Delete, "Manage Access", and now shows due_date
  */
 
 import React, { useEffect, useState, ChangeEvent } from "react";
@@ -41,6 +41,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 // import LockOpenIcon from "@mui/icons-material/LockOpen"; 
 // or use another relevant icon if you prefer
 
+// Updated interface to include due_date
 interface FormData {
   id: number;
   title: string;
@@ -48,10 +49,19 @@ interface FormData {
   published?: boolean;
   updated_at?: string;
   country?: string;
+  /** The due date (ISO string) from the backend, if provided */
+  due_date?: string;
 }
 
 // For sorting
-type SortOption = "title-asc" | "title-desc" | "date-latest" | "date-oldest";
+type SortOption =
+  | "title-asc"
+  | "title-desc"
+  | "date-latest"
+  | "date-oldest"
+  | "due-latest"
+  | "due-oldest";
+
 // For published filtering
 type PublishedFilter = "all" | "published" | "draft";
 
@@ -179,16 +189,34 @@ export default function MyForms() {
         return a.title.localeCompare(b.title);
       case "title-desc":
         return b.title.localeCompare(a.title);
+
       case "date-latest":
+        // "Newest updated_at" first
         return (
           (b.updated_at ? new Date(b.updated_at).getTime() : 0) -
           (a.updated_at ? new Date(a.updated_at).getTime() : 0)
         );
       case "date-oldest":
+        // "Oldest updated_at" first
         return (
           (a.updated_at ? new Date(a.updated_at).getTime() : 0) -
           (b.updated_at ? new Date(b.updated_at).getTime() : 0)
         );
+
+      // NEW: Sort by due_date (descending or ascending)
+      case "due-latest":
+        // Items with the newest due_date first
+        return (
+          (b.due_date ? new Date(b.due_date).getTime() : 0) -
+          (a.due_date ? new Date(a.due_date).getTime() : 0)
+        );
+      case "due-oldest":
+        // Items with the oldest due_date first
+        return (
+          (a.due_date ? new Date(a.due_date).getTime() : 0) -
+          (b.due_date ? new Date(b.due_date).getTime() : 0)
+        );
+
       default:
         return 0;
     }
@@ -218,8 +246,11 @@ export default function MyForms() {
           <Select value={sortOption} onChange={handleSortChange} label="Sort By">
             <MenuItem value="title-asc">Title (A-Z)</MenuItem>
             <MenuItem value="title-desc">Title (Z-A)</MenuItem>
-            <MenuItem value="date-latest">Date (Latest)</MenuItem>
-            <MenuItem value="date-oldest">Date (Oldest)</MenuItem>
+            <MenuItem value="date-latest">Updated (Latest)</MenuItem>
+            <MenuItem value="date-oldest">Updated (Oldest)</MenuItem>
+            {/* NEW due_date sort options */}
+            <MenuItem value="due-latest">Due Date (Latest)</MenuItem>
+            <MenuItem value="due-oldest">Due Date (Oldest)</MenuItem>
           </Select>
         </FormControl>
 
@@ -317,9 +348,18 @@ export default function MyForms() {
                   </Typography>
                 )}
 
+                {/* NEW: show due_date if present */}
+                {form.due_date && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    <strong>Due Date:</strong>{" "}
+                    {new Date(form.due_date).toLocaleDateString()}
+                  </Typography>
+                )}
+
                 {form.updated_at && (
                   <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                    Last Updated: {new Date(form.updated_at).toLocaleString()}
+                    Last Updated:{" "}
+                    {new Date(form.updated_at).toLocaleString()}
                   </Typography>
                 )}
 

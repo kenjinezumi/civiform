@@ -108,38 +108,21 @@ export default function FormAccessManager() {
     });
   }
 
-  // Regenerate password => calls PATCH to /forms/:formId/participants/:pf_id
-  async function handleRegeneratePassword(p: Participant) {
+  async function handleRegeneratePassword(pId: number) {
     if (!formId) return;
-    setLoading(true);
-    setError(null);
     try {
-      // Example PATCH call. Adjust logic/payload as your backend requires
-      const res = await axios.patch(
-        `${API_BASE_URL}/forms/${formId}/participants/${p.id}`,
-        {
-          regeneratePassword: true,
-        }
+      // POST to the new endpoint
+      const res = await axios.post(
+        `${API_BASE_URL}/forms/${formId}/participants/${pId}/regenerate-password`
       );
-      const updatedParticipant = res.data as Participant;
-
-      // Update participant array
-      setParticipants((prev) =>
-        prev.map((oldP) =>
-          oldP.id === updatedParticipant.id ? updatedParticipant : oldP
-        )
+      // res.data is the updated participant with new password
+      const updatedParticipant = res.data;
+      // update local state
+      setParticipants(prev =>
+        prev.map(p => p.id === pId ? updatedParticipant : p)
       );
-
-      // Optionally show the new password
-      setShowPwdSet((prev) => {
-        const newSet = new Set(prev);
-        newSet.add(updatedParticipant.id);
-        return newSet;
-      });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message);
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      alert('Error regenerating password...');
     }
   }
 
@@ -230,8 +213,8 @@ export default function FormAccessManager() {
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => handleRegeneratePassword(p)}
-                  >
+                    onClick={() => handleRegeneratePassword(p.id)} 
+                    >
                     Regenerate
                   </Button>
                 </TableCell>
